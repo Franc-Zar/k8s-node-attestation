@@ -2,7 +2,7 @@ package registrar
 
 import (
 	"database/sql"
-	"github.com/franc-zar/k8s-node-attestation/cluster"
+	"github.com/franc-zar/k8s-node-attestation/pkg/cluster"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"

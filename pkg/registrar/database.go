@@ -2,6 +2,7 @@ package registrar
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	"sync"
 )
@@ -9,6 +10,112 @@ import (
 type AttestationDatabase struct {
 	db  *sql.DB
 	mtx sync.Mutex
+}
+
+func (a *AttestationDatabase) initCACertificates() error {
+	// Prepare the insert statement
+	insertCertificateQuery := `INSERT INTO tpm_ca_certificates (cn, PEMCertificate) VALUES (?, ?);`
+	query, err := a.db.Prepare(insertCertificateQuery)
+	if err != nil {
+		return fmt.Errorf("error preparing statement: %v", err)
+	}
+
+	defer func(query *sql.Stmt) {
+		err := query.Close()
+		if err != nil {
+			return
+		}
+	}(query)
+
+	// Insert vendors into the database
+	for _, caCertificate := range getKnownTPMCACertificates() {
+		_, err := query.Exec(caCertificate.CommonName, caCertificate.PEMCertificate)
+		if err != nil {
+			return fmt.Errorf("error inserting TPM vendor %s: %v", caCertificate.CommonName, err)
+		}
+	}
+	return nil
+}
+
+func (a *AttestationDatabase) initTPMVendors() error {
+	// Prepare the insert statement
+	insertVendorQuery := `INSERT INTO tpm_vendors (name, TCGIdentifier) VALUES (?, ?);`
+	query, err := a.db.Prepare(insertVendorQuery)
+	if err != nil {
+		return fmt.Errorf("error preparing statement: %v", err)
+	}
+
+	defer func(query *sql.Stmt) {
+		err := query.Close()
+		if err != nil {
+			return
+		}
+	}(query)
+
+	// Insert vendors into the database
+	for _, vendor := range getKnownTPMManufacturers() {
+		_, err := query.Exec(vendor.Name, vendor.TCGIdentifier)
+		if err != nil {
+			return fmt.Errorf("error inserting TPM vendor %s: %v", vendor.Name, err)
+		}
+	}
+	return nil
+}
+
+// InitializeRegistrarDatabase sets up the database and creates necessary tables if they don't exist.
+func (a *AttestationDatabase) InitializeAttestationDatabase() error {
+	var err error
+	a.db, err = sql.Open("sqlite", "./attestation.db")
+	if err != nil {
+		return fmt.Errorf("failed to open registrar db: %w", err)
+	}
+
+	// Create workers table
+	createWorkerTableQuery := `
+	CREATE TABLE IF NOT EXISTS workers (
+		UUID TEXT PRIMARY KEY,
+		name TEXT NOT NULL UNIQUE,
+		AIK TEXT NOT NULL UNIQUE
+	);`
+	if _, err = a.db.Exec(createWorkerTableQuery); err != nil {
+		return fmt.Errorf("failed to create workers table: %w", err)
+	}
+
+	// Create TPM Certificates table
+	createTPMCertTableQuery := `
+	CREATE TABLE IF NOT EXISTS tpm_ca_certificates (
+		certificateId INTEGER PRIMARY KEY AUTOINCREMENT,
+		cn TEXT NOT NULL UNIQUE,
+		PEMcertificate TEXT NOT NULL UNIQUE
+	);`
+
+	if _, err = a.db.Exec(createTPMCertTableQuery); err != nil {
+		return fmt.Errorf("failed to create TPM certificates table: %w", err)
+	}
+
+	// Create TPM Certificates table
+	createTPMVendorTableQuery := `
+	CREATE TABLE IF NOT EXISTS tpm_vendors (
+		vendorId INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL UNIQUE,
+		TCGIdentifier TEXT NOT NULL UNIQUE
+	);`
+
+	if _, err = a.db.Exec(createTPMVendorTableQuery); err != nil {
+		return fmt.Errorf("failed to create TPM vendors table: %w", err)
+	}
+
+	err = a.initTPMVendors()
+	if err != nil {
+		return fmt.Errorf("failed to insert default TPM vendors: %v", err)
+	}
+
+	err = a.initCACertificates()
+	if err != nil {
+		return fmt.Errorf("failed to insert known CA certificates: %v", err)
+	}
+
+	return nil
 }
 
 // TPMManufacturers TCG recognized TPM manufacturers

@@ -1,4 +1,4 @@
-module github.com/franc-zar/k8s-node-attestation/cluster
+module github.com/franc-zar/k8s-node-attestation/pkg/cluster
 
 go 1.23.4
 
