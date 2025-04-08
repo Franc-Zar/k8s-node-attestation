@@ -3,7 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"github.com/franc-zar/k8s-node-attestation/logger"
+	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"

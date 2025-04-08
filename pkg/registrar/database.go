@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
+	_ "modernc.org/sqlite"
 	"sync"
 )
 
@@ -14,7 +15,7 @@ type AttestationDatabase struct {
 
 func (a *AttestationDatabase) initCACertificates() error {
 	// Prepare the insert statement
-	insertCertificateQuery := `INSERT INTO tpm_ca_certificates (cn, PEMCertificate) VALUES (?, ?);`
+	insertCertificateQuery := `INSERT INTO tpm_ca_certificates (commonName, PEMCertificate) VALUES (?, ?);`
 	query, err := a.db.Prepare(insertCertificateQuery)
 	if err != nil {
 		return fmt.Errorf("error preparing statement: %v", err)
@@ -85,7 +86,7 @@ func (a *AttestationDatabase) InitializeAttestationDatabase() error {
 	createTPMCertTableQuery := `
 	CREATE TABLE IF NOT EXISTS tpm_ca_certificates (
 		certificateId INTEGER PRIMARY KEY AUTOINCREMENT,
-		cn TEXT NOT NULL UNIQUE,
+		commonName TEXT NOT NULL UNIQUE,
 		PEMcertificate TEXT NOT NULL UNIQUE
 	);`
 

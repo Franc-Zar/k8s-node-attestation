@@ -1,22 +1,20 @@
 package registrar
 
 import (
-	"database/sql"
 	"github.com/franc-zar/k8s-node-attestation/pkg/cluster"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
-	_ "modernc.org/sqlite"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
 type Registrar struct {
-	interactor           cluster.Interactor
-	informerFactory      informers.SharedInformerFactory
-	attestationDadatabse AttestationDatabase
+	interactor          cluster.Interactor
+	informerFactory     informers.SharedInformerFactory
+	attestationDatabase AttestationDatabase
 }
 
 func (r *Registrar) deleteNodeHandling(obj interface{}) {
@@ -61,6 +59,10 @@ func (r *Registrar) WatchNodes() {
 
 	// Keep running until stopped
 	<-stopStructCh
+}
+
+func (r *Registrar) RegisterNode(node *corev1.Node) {
+
 }
 
 // setupSignalHandler sets up a signal handler for graceful termination.
