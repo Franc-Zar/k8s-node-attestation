@@ -1,4 +1,4 @@
-module github.com/franc-zar/k8s-node-attestation/logger
+module github.com/franc-zar/k8s-node-attestation/pkg/logger
 
 go 1.23.4
 
