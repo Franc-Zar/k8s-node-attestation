@@ -2,6 +2,7 @@ package registrar
 
 import (
 	"database/sql"
+	"github.com/franc-zar/k8s-node-attestation/cluster"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
@@ -9,14 +10,13 @@ import (
 	_ "modernc.org/sqlite"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 )
 
 type Registrar struct {
-	informerFactory informers.SharedInformerFactory
-	db              *sql.DB
-	mtx             sync.Mutex
+	interactor           cluster.Interactor
+	informerFactory      informers.SharedInformerFactory
+	attestationDadatabse AttestationDatabase
 }
 
 func (r *Registrar) deleteNodeHandling(obj interface{}) {
