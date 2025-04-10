@@ -3,7 +3,6 @@ package registrar
 import (
 	"github.com/franc-zar/k8s-node-attestation/pkg/cluster"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
-	"github.com/veraison/cmw"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
@@ -16,7 +15,7 @@ import (
 type Registrar struct {
 	interactor          cluster.Interactor
 	informerFactory     informers.SharedInformerFactory
-	attestationDatabase AttestationDatabase
+	attestationDatabase DAO
 	defaultResync       int
 	dataSourceName      string
 }

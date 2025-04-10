@@ -1,15 +1,12 @@
 package attestation
 
 import (
-	"crypto"
-	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	cryptoUtils "github.com/franc-zar/k8s-node-attestation/pkg/crypto"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	"github.com/google/go-tpm-tools/client"
 	"github.com/google/go-tpm-tools/simulator"
@@ -153,7 +150,10 @@ func (tpm *TPM) GetEKandCertificate(keyType KeyType) ([]byte, []byte, error) {
 		pemEKCert = []byte("EK Certificate not provided")
 	}
 
-	pemPublicEK := cryptoUtils.EncodePublicKeyToPEM(EK.PublicKey())
+	pemPublicEK, err := cryptoUtils.EncodePublicKeyToPEM(EK.PublicKey())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to encode public key to pem: %v", err)
+	}
 	return pemPublicEK, pemEKCert, nil
 }
 

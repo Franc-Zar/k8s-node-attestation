@@ -31,6 +31,39 @@ func EncodePublicKeyToPEM(pubKey crypto.PublicKey) ([]byte, error) {
 	return pubPEM, nil
 }
 
+// DecodePublicKeyFromPEM decodes a PEM-encoded RSA or ECDSA public key and returns it as a crypto.PublicKey.
+func DecodePublicKeyFromPEM(publicKeyPEM []byte) (crypto.PublicKey, error) {
+	block, _ := pem.Decode(publicKeyPEM)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block containing public key")
+	}
+
+	switch block.Type {
+	case "RSA PUBLIC KEY":
+		rsaPubKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse PKCS1 RSA public key: %v", err)
+		}
+		return rsaPubKey, nil
+	case "PUBLIC KEY":
+		pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse PKIX public key: %v", err)
+		}
+
+		switch key := pubKey.(type) {
+		case *rsa.PublicKey:
+			return key, nil
+		case *ecdsa.PublicKey:
+			return key, nil
+		default:
+			return nil, fmt.Errorf("unsupported public key type: %T", key)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported PEM type: %s", block.Type)
+	}
+}
+
 // LoadCertificateFromPEM loads a certificate from a PEM string
 func LoadCertificateFromPEM(pemCert []byte) (*x509.Certificate, error) {
 	block, _ := pem.Decode(pemCert)

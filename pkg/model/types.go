@@ -6,6 +6,11 @@ type WorkerNode struct {
 	AIK  string `json:"AIK"`
 }
 
+type IMAEntry struct {
+	FilePath string `json:"filePath"`
+	FileHash string `json:"fileHash"`
+}
+
 type AgentConfig struct {
 	TPMPath                 string `json:"TPMPath"`
 	IMAMountPath            string `json:"IMAMountPath"`

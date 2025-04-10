@@ -3,6 +3,7 @@ module github.com/franc-zar/k8s-node-attestation/pkg/attestation
 go 1.23.4
 
 require (
+	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250409104027-c4f37d0c0da2
 	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250408142359-ec64f9ad71a8
 	github.com/google/go-tpm v0.9.3
 	github.com/google/go-tpm-tools v0.4.5
@@ -10,6 +11,8 @@ require (
 
 require (
 	github.com/fatih/color v1.18.0 // indirect
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250409102330-c6fe0ac46c13 // indirect
+	github.com/google/go-attestation v0.5.1 // indirect
 	github.com/google/go-configfs-tsm v0.3.3-0.20240919001351-b4b5b84fdcbc // indirect
 	github.com/google/go-sev-guest v0.12.1 // indirect
 	github.com/google/go-tdx-guest v0.3.2-0.20241009005452-097ee70d0843 // indirect
@@ -19,6 +22,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 )

@@ -8,29 +8,29 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type AttestationDatabase struct {
+type DAO struct {
 	db *sql.DB
 }
 
-func (a *AttestationDatabase) Close() {
-	err := a.db.Close()
+func (d *DAO) Close() {
+	err := d.db.Close()
 	if err != nil {
 		logger.Fatal("Failed to close attestation database: %v", err)
 	}
 }
 
-func (a *AttestationDatabase) Open(dataSourceName string) {
+func (d *DAO) Open(dataSourceName string) {
 	var err error
-	a.db, err = sql.Open("sqlite", dataSourceName)
+	d.db, err = sql.Open("sqlite", dataSourceName)
 	if err != nil {
 		logger.Fatal("failed to open registrar db: %v", err)
 	}
 }
 
-func (a *AttestationDatabase) initCACertificates() error {
+func (d *DAO) initCACertificates() error {
 	// Prepare the insert statement
 	insertCertificateQuery := `INSERT INTO tpm_ca_certificates (commonName, pemCertificate) VALUES (?, ?);`
-	query, err := a.db.Prepare(insertCertificateQuery)
+	query, err := d.db.Prepare(insertCertificateQuery)
 	if err != nil {
 		return fmt.Errorf("error preparing statement: %v", err)
 	}
@@ -52,10 +52,10 @@ func (a *AttestationDatabase) initCACertificates() error {
 	return nil
 }
 
-func (a *AttestationDatabase) initTPMVendors() error {
+func (d *DAO) initTPMVendors() error {
 	// Prepare the insert statement
 	insertVendorQuery := `INSERT INTO tpm_vendors (name, tcgIdentifier) VALUES (?, ?);`
-	query, err := a.db.Prepare(insertVendorQuery)
+	query, err := d.db.Prepare(insertVendorQuery)
 	if err != nil {
 		return fmt.Errorf("error preparing statement: %v", err)
 	}
@@ -78,7 +78,7 @@ func (a *AttestationDatabase) initTPMVendors() error {
 }
 
 // Init sets up the database and creates necessary tables if they don't exist.
-func (a *AttestationDatabase) Init() {
+func (d *DAO) Init() {
 	var err error
 	// Create workers table
 	createWorkerTableQuery := `
@@ -87,7 +87,7 @@ func (a *AttestationDatabase) Init() {
 		name TEXT NOT NULL UNIQUE,
 		AIK TEXT NOT NULL UNIQUE
 	);`
-	if _, err = a.db.Exec(createWorkerTableQuery); err != nil {
+	if _, err = d.db.Exec(createWorkerTableQuery); err != nil {
 		logger.Fatal("failed to create workers table: %w", err)
 	}
 
@@ -99,7 +99,7 @@ func (a *AttestationDatabase) Init() {
 		pemCertificate TEXT NOT NULL UNIQUE
 	);`
 
-	if _, err = a.db.Exec(createTPMCertTableQuery); err != nil {
+	if _, err = d.db.Exec(createTPMCertTableQuery); err != nil {
 		logger.Fatal("failed to create TPM certificates table: %w", err)
 	}
 
@@ -111,16 +111,16 @@ func (a *AttestationDatabase) Init() {
 		tcgIdentifier TEXT NOT NULL UNIQUE
 	);`
 
-	if _, err = a.db.Exec(createTPMVendorTableQuery); err != nil {
+	if _, err = d.db.Exec(createTPMVendorTableQuery); err != nil {
 		logger.Fatal("failed to create TPM vendors table: %w", err)
 	}
 
-	err = a.initTPMVendors()
+	err = d.initTPMVendors()
 	if err != nil {
 		logger.Fatal("failed to insert default TPM vendors: %v", err)
 	}
 
-	err = a.initCACertificates()
+	err = d.initCACertificates()
 	if err != nil {
 		logger.Fatal("failed to insert known CA certificates: %v", err)
 	}
@@ -165,36 +165,98 @@ func getKnownTPMCACertificates() []model.TPMCACertificate {
 }
 
 // Utility function: Check if a worker already exists by name
-func (a *AttestationDatabase) workerExistsByUUID(uuid string) (bool, error) {
+func (d *DAO) workerExistsByAIK(aik string) (bool, error) {
 	var count int
-	query := "SELECT COUNT(*) FROM workers WHERE UUID = ?;"
-	err := a.db.QueryRow(query, uuid).Scan(&count)
+	query := "SELECT COUNT(*) FROM workers WHERE AIK = ?;"
+	err := d.db.QueryRow(query, aik).Scan(&count)
 	if err != nil {
 		return false, err
 	}
 	return count > 0, nil
 }
 
-func (a *AttestationDatabase) AddWorker(worker model.WorkerNode) error {
+// Utility function: Check if a worker already exists by name
+func (d *DAO) workerExistsByUUID(uuid string) (bool, error) {
+	var count int
+	query := "SELECT COUNT(*) FROM workers WHERE UUID = ?;"
+	err := d.db.QueryRow(query, uuid).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (d *DAO) AddWorker(worker model.WorkerNode) error {
 	query := "INSERT INTO workers (UUID, name, AIK) VALUES (?, ?, ?);"
-	_, err := a.db.Exec(query, worker.UUID, worker.Name, worker.AIK)
+	_, err := d.db.Exec(query, worker.UUID, worker.Name, worker.AIK)
 	return err
 }
 
-func (a *AttestationDatabase) DeleteWorker(UUID string) error {
+func (d *DAO) DeleteWorker(UUID string) error {
 	query := "DELETE FROM workers WHERE UUID = ?;"
-	_, err := a.db.Exec(query, UUID)
+	_, err := d.db.Exec(query, UUID)
 	return err
 }
 
-func (a *AttestationDatabase) AddTPMCaCertificate(certificate *model.TPMCACertificate) error {
+func (d *DAO) GetWorkerByUUID(UUID string) (*model.WorkerNode, error) {
+	var worker model.WorkerNode
+	query := "SELECT * FROM workers WHERE UUID = ?;"
+	err := d.db.QueryRow(query, UUID).Scan(&worker.UUID, &worker.Name, &worker.AIK)
+	if err != nil {
+		return nil, err
+	}
+	return &worker, nil
+}
+
+func (d *DAO) GetWorkerByName(name string) (*model.WorkerNode, error) {
+	var worker model.WorkerNode
+	query := "SELECT * FROM workers WHERE name = ?;"
+	err := d.db.QueryRow(query, name).Scan(&worker.UUID, &worker.Name, &worker.AIK)
+	if err != nil {
+		return nil, err
+	}
+	return &worker, nil
+}
+
+func (d *DAO) AddTPMCaCertificate(certificate *model.TPMCACertificate) error {
 	query := "INSERT INTO tpm_ca_certificates (commonName, pemCertificate) VALUES (?, ?);"
-	_, err := a.db.Exec(query, certificate.CommonName, certificate.PEMCertificate)
+	_, err := d.db.Exec(query, certificate.CommonName, certificate.PEMCertificate)
 	return err
 }
 
-func (a *AttestationDatabase) DeleteTPMCaCertificate(commonName string) error {
+func (d *DAO) DeleteTPMCaCertificate(commonName string) error {
 	query := "DELETE FROM tpm_ca_certificates WHERE commonName = ?;"
-	_, err := a.db.Exec(query, commonName)
+	_, err := d.db.Exec(query, commonName)
 	return err
+}
+
+func (d *DAO) GetAllTPMCaCertificates() ([]model.TPMCACertificate, error) {
+	query := "SELECT certificateId, commonName, pemCertificate FROM tpm_ca_certificates;"
+	rows, err := d.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+			return
+		}
+	}(rows)
+
+	var certs []model.TPMCACertificate
+	for rows.Next() {
+		var cert model.TPMCACertificate
+		err = rows.Scan(&cert.CertificateId, &cert.CommonName, &cert.PEMCertificate)
+		if err != nil {
+			return nil, err
+		}
+		certs = append(certs, cert)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return certs, nil
 }
