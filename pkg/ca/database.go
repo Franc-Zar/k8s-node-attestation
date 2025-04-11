@@ -2,6 +2,7 @@ package ca
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	_ "modernc.org/sqlite"
 )
@@ -137,6 +138,53 @@ func (d *DAO) GetAllIssuedCertificates() ([][]byte, error) {
 	return certs, nil
 }
 
+func (d *DAO) EraseAllTables() error {
+	var err error
+	tables := []string{
+		"issued_certificates",
+		"revoked_certificates",
+		"certificate_revocation_lists",
+		// Add other tables here
+	}
+
+	tx, err := d.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %v", err)
+	}
+
+	for _, table := range tables {
+		stmt, err := tx.Prepare("DELETE FROM " + table)
+		if err != nil {
+			err = tx.Rollback()
+			if err != nil {
+				return fmt.Errorf("failed to rollback transaction: %v", err)
+			}
+			return fmt.Errorf("failed to prepare delete for table %s: %v", table, err)
+		}
+		if _, err = stmt.Exec(); err != nil {
+			err = stmt.Close()
+			if err != nil {
+				return fmt.Errorf("failed to close delete for table %s: %v", table, err)
+			}
+			err = tx.Rollback()
+			if err != nil {
+				return fmt.Errorf("failed to rollback transaction: %v", err)
+			}
+			return fmt.Errorf("failed to execute delete for table %s: %v", table, err)
+		}
+		err = stmt.Close()
+		if err != nil {
+			return fmt.Errorf("failed to close delete for table %s: %v", table, err)
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return nil
+}
+
 // StoreCRL stores a PEM-encoded CRL using the associated certificate serial
 func (d *DAO) StoreCRL(serialNumber int64, crlPEM []byte) error {
 	_, err := d.db.Exec(`
@@ -150,6 +198,17 @@ func (d *DAO) GetCRL(serialNumber int64) ([]byte, error) {
 	var crlPEM []byte
 	err := d.db.QueryRow(`
 	SELECT crl_pem FROM crls WHERE cert_serial = ?`, serialNumber).Scan(&crlPEM)
+	if err != nil {
+		return nil, err
+	}
+	return crlPEM, nil
+}
+
+// GetCRL retrieves the CRL for a given certificate serial number
+func (d *DAO) GetLatestCRL() ([]byte, error) {
+	var crlPEM []byte
+	err := d.db.QueryRow(`
+	SELECT crl_pem FROM crls ORDER BY created_at DESC LIMIT 1`).Scan(&crlPEM)
 	if err != nil {
 		return nil, err
 	}

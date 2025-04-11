@@ -3,9 +3,9 @@ module github.com/franc-zar/k8s-node-attestation/pkg/registrar
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/cluster v0.0.0-20250410164253-aab2fce2853d
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250410164253-aab2fce2853d
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250410164253-aab2fce2853d
+	github.com/franc-zar/k8s-node-attestation/pkg/cluster v0.0.0-20250411083456-fd081831de33
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250411083456-fd081831de33
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250411083456-fd081831de33
 	github.com/veraison/cmw v0.1.1
 	k8s.io/api v0.32.3
 	k8s.io/client-go v0.32.3

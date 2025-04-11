@@ -161,6 +161,42 @@ func handleTPMSubjectAltName(cert *x509.Certificate, tpmVendors []model.TPMVendo
 	return fmt.Errorf("SubjectAltName extension not found")
 }
 
+// VerifyTLSCertificateChain verifies the TLS certificate against the root CA certificate for mTLS
+func VerifyTLSCertificateChain(cert, rootCACert *x509.Certificate) error {
+	// Create a new cert pool and add the root CA certificate
+	roots := x509.NewCertPool()
+	roots.AddCert(rootCACert)
+
+	// Create the VerifyOptions object, including the Root CA cert pool
+	opts := x509.VerifyOptions{
+		Roots: roots,
+	}
+
+	// Verify the certificate chain against the root CA
+	if _, err := cert.Verify(opts); err != nil {
+		return fmt.Errorf("certificate verification failed: %v", err)
+	}
+
+	// Check if the certificate includes KeyEncipherment for mTLS
+	if cert.KeyUsage&x509.KeyUsageKeyEncipherment == 0 {
+		return fmt.Errorf("certificate key usage does not include KeyEncipherment")
+	}
+
+	// Check if the certificate supports ClientAuth or ServerAuth for mTLS
+	validAuth := false
+	for _, eku := range cert.ExtKeyUsage {
+		if eku == x509.ExtKeyUsageClientAuth || eku == x509.ExtKeyUsageServerAuth {
+			validAuth = true
+			break
+		}
+	}
+	if !validAuth {
+		return fmt.Errorf("certificate does not include ClientAuth or ServerAuth in extended key usage")
+	}
+
+	return nil
+}
+
 // VerifyEKCertificateChain verifies the provided certificate chain from PEM strings
 func VerifyEKCertificateChain(ekCert, intermediateCACert, rootCACert *x509.Certificate, tpmVendors []model.TPMVendor) error {
 	roots := x509.NewCertPool()
