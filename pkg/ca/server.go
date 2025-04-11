@@ -21,10 +21,10 @@ import (
 const CommonName = "Kubernetes Attestation Root CA"
 const Organization = "Kubernetes Attestation"
 const DatabaseName = "kubernetes-ca.db"
-const HelpString = `Kubernetes Attestation CA is a plugin that manages certificates for components involved in the attestation process of nodes within a Kubernetes cluster.
+const HelpString = `Attestation CA is a plugin that manages certificates for components involved in the attestation process of nodes within a Kubernetes cluster.
 
 Usage:
-  kubectl attestation ca <command> [--flags]
+  attestation-ca <command> [--flags]
 
 Commands:
   help
@@ -33,14 +33,14 @@ Commands:
   reset
       Erase current Root CA configuration
 
-  setup
+  init
       --root-key-alg ECDSA | RSA
           Set up and initialize the Root CA (if not already done) by generating 
           a private signing key using the chosen algorithm and creating the root certificate
 
   issue-certificate
       --csr
-          Issue a certificate using a Certificate Signing Request (CSR)
+          Issue a certificate using a Certificate Signing Request (CSR) base64-encoded
 
   revoke-certificate
       --cert, -c
@@ -86,15 +86,14 @@ func (s *Server) Help() {
 	logger.Info(HelpString)
 }
 
-func (s *Server) SetCA(rootKeyType KeyType) {
+func (s *Server) SetCA() {
 	var err error
 	s.CADao.Open(DatabaseName)
+	defer s.CADao.Close()
 	s.CARootCertPEM, s.CARootKeyPEM, err = s.CADao.GetRootCA()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			logger.Warning("root CA does not exist; initializing CA")
-			s.init(rootKeyType)
-			return
+			logger.Fatal("root CA is not initialized")
 		} else {
 			logger.Fatal("failed to get root CA certificate and key: %v", err)
 		}
@@ -117,12 +116,16 @@ func (s *Server) SetCA(rootKeyType KeyType) {
 	}
 }
 
-// init initializes the CA and generates a self-signed certificate
-func (s *Server) init(rootKeyType KeyType) {
+// Init initializes the CA and generates a self-signed certificate
+func (s *Server) Init(rootKeyType KeyType) {
+	s.CADao.Open(DatabaseName)
+	defer s.CADao.Close()
 	err := s.CADao.EraseAllTables()
 	if err != nil {
 		logger.Fatal("failed to erase all tables: %v", err)
 	}
+
+	s.CADao.Init()
 
 	switch rootKeyType {
 	case RSA:
@@ -207,6 +210,8 @@ func (s *Server) init(rootKeyType KeyType) {
 }
 
 func (s *Server) IssueCertificate(csrPEM []byte) []byte {
+	s.CADao.Open(DatabaseName)
+	defer s.CADao.Close()
 	serialNumber, issuedCert, err := s.signCSR(csrPEM)
 	if err != nil {
 		logger.Error("failed to issue new certificate: %v", err)
@@ -221,7 +226,18 @@ func (s *Server) IssueCertificate(csrPEM []byte) []byte {
 	return issuedCert
 }
 
+func (s *Server) GetLatestCRL() []byte {
+	crl, err := s.CADao.GetLatestCRL()
+	if err != nil {
+		logger.Fatal("failed to get latest crl: %v", err)
+	}
+	logger.Success("successfully retrieved latest crl")
+	return crl
+}
+
 func (s *Server) RevokeCertificate(certPEM []byte) ([]byte, error) {
+	s.CADao.Open(DatabaseName)
+	defer s.CADao.Close()
 	// Decode the input PEM certificate
 	block, _ := pem.Decode(certPEM)
 	if block == nil || block.Type != "CERTIFICATE" {
@@ -310,6 +326,8 @@ func (s *Server) RevokeCertificate(certPEM []byte) ([]byte, error) {
 }
 
 func (s *Server) RevokeAllCertificates() ([]byte, error) {
+	s.CADao.Open(DatabaseName)
+	defer s.CADao.Close()
 	// Retrieve all issued certificates
 	issuedCertsPEM, err := s.CADao.GetAllIssuedCertificates()
 	if err != nil {
@@ -412,11 +430,22 @@ func (s *Server) RevokeAllCertificates() ([]byte, error) {
 }
 
 func (s *Server) Reset() {
+	s.CADao.Open(DatabaseName)
+	defer s.CADao.Close()
 	err := s.CADao.EraseAllTables()
 	if err != nil {
 		logger.Fatal("failed to erase all tables: %v", err)
 	}
 	logger.Success("Correctly reset Root CA")
+}
+
+func (s *Server) GetCertificate(commonName string) ([]byte, error) {
+	s.CADao.Open(DatabaseName)
+	defer s.CADao.Close()
+	certPEM, err := s.CADao.GetIssuedCertificate()
+	if err != nil {
+
+	}
 }
 
 // Private
