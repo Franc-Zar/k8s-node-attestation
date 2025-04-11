@@ -31,6 +31,48 @@ func EncodePublicKeyToPEM(pubKey crypto.PublicKey) ([]byte, error) {
 	return pubPEM, nil
 }
 
+// DecodePrivateKeyFromPEM decodes a PEM-encoded RSA or ECDSA private key and returns it as a crypto.PrivateKey.
+func DecodePrivateKeyFromPEM(privateKeyPEM []byte) (crypto.PrivateKey, error) {
+	block, _ := pem.Decode(privateKeyPEM)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block containing private key")
+	}
+
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		rsaKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse PKCS1 RSA private key: %v", err)
+		}
+		return rsaKey, nil
+
+	case "EC PRIVATE KEY":
+		ecKey, err := x509.ParseECPrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse EC private key: %v", err)
+		}
+		return ecKey, nil
+
+	case "PRIVATE KEY": // Usually PKCS#8, could be RSA or EC
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse PKCS8 private key: %v", err)
+		}
+
+		switch k := key.(type) {
+		case *rsa.PrivateKey:
+			return k, nil
+		case *ecdsa.PrivateKey:
+			return k, nil
+		default:
+			return nil, fmt.Errorf("unsupported private key type in PKCS#8: %T", k)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported PEM type: %s", block.Type)
+	}
+}
+
 // DecodePublicKeyFromPEM decodes a PEM-encoded RSA or ECDSA public key and returns it as a crypto.PublicKey.
 func DecodePublicKeyFromPEM(publicKeyPEM []byte) (crypto.PublicKey, error) {
 	block, _ := pem.Decode(publicKeyPEM)

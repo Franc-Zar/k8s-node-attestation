@@ -3,8 +3,8 @@ module github.com/franc-zar/k8s-node-attestation/pkg/cluster
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250408135654-4afda06452ad
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250408135654-4afda06452ad
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250410164253-aab2fce2853d
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250410164253-aab2fce2853d
 	k8s.io/api v0.32.3
 	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.3

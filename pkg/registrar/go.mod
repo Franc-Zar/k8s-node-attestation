@@ -3,9 +3,9 @@ module github.com/franc-zar/k8s-node-attestation/pkg/registrar
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/cluster v0.0.0-20250408142359-ec64f9ad71a8
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250408142359-ec64f9ad71a8
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250408142359-ec64f9ad71a8
+	github.com/franc-zar/k8s-node-attestation/pkg/cluster v0.0.0-20250410164253-aab2fce2853d
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250410164253-aab2fce2853d
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250410164253-aab2fce2853d
 	github.com/veraison/cmw v0.1.1
 	k8s.io/api v0.32.3
 	k8s.io/client-go v0.32.3
@@ -41,7 +41,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
+	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.29.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect

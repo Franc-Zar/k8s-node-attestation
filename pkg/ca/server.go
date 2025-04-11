@@ -55,7 +55,7 @@ func (s *Server) SetCA() {
 	if err != nil {
 		logger.Fatal("failed to load root CA certificate: %v", err)
 	}
-	s.CARootKey, err = cryptoUtils.DecodePublicKeyFromPEM(s.CARootKeyPEM)
+	s.CARootKey, err = cryptoUtils.DecodePrivateKeyFromPEM(s.CARootKeyPEM)
 	if err != nil {
 		logger.Fatal("failed to load root CA certificate: %v", err)
 	}
