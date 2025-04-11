@@ -1,9 +1,9 @@
 package main
 
 import (
+	"encoding/base64"
 	"github.com/franc-zar/k8s-node-attestation/pkg/ca"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
-	"log"
 	"os"
 )
 
@@ -66,11 +66,16 @@ func main() {
 		}
 		attestationCA.SetCA()
 		flag := os.Args[2]
+		encCSR := os.Args[3]
+		decodedCSR, err := base64.StdEncoding.DecodeString(encCSR)
+		if err != nil {
+			logger.Fatal("Invalid base64 CSR.")
+		}
 		switch flag {
 		case "--csr":
-			csr := os.Args[3]
 			// Issue a certificate with CSR
-			attestationCA.IssueCertificate(csr)
+			issuedCert := attestationCA.IssueCertificate(decodedCSR)
+			logger.Success("%s", string(issuedCert))
 		default:
 			logger.Fatal("Unknown flag for certificate command: %s", flag)
 		}
@@ -78,31 +83,32 @@ func main() {
 	case RevokeCertificateCommand:
 		// Ensure that the revoke certificate flags are provided
 		if len(os.Args) < 3 {
-			log.Fatal("Usage: attestation-ca revoke-certificate --cert, -c | --all, -a")
+			logger.Fatal("Usage: attestation-ca revoke-certificate --cert, -c | --all, -a")
 		}
 		attestationCA.SetCA()
 		flag := os.Args[2]
+		flagArg := []byte(os.Args[3])
 		switch flag {
 		case "--cert", "-c":
 			// Revoke a specific certificate
-			_, err := attestationCA.RevokeCertificate(os.Args[3])
+			_, err := attestationCA.RevokeCertificate(flagArg)
 			if err != nil {
 				return
 			}
 		case "--all", "-a":
 			// Revoke all certificates
-			_, err := attestationCA.RevokeAllCertificates()
+			_, err := attestationCA.RevokeAllCertificates(flagArg)
 			if err != nil {
 				return
 			}
 		default:
-			log.Fatalf("Unknown flag for revoke-certificate command: %s", flag)
+			logger.Fatal("Unknown flag for revoke-certificate command: %s", flag)
 		}
 
 	case GetCertificateCommand:
 		// Ensure that the get certificate flag is provided
 		if len(os.Args) < 3 {
-			log.Fatal("Usage: kubectl attestation ca get-certificate --common-name, -cn")
+			logger.Fatal("Usage: kubectl attestation ca get-certificate --common-name, -cn")
 		}
 		attestationCA.SetCA()
 		flag := os.Args[2]
@@ -111,7 +117,7 @@ func main() {
 			// Retrieve a certificate by Common Name
 			//attestationCA.GetCertificateByCN(os.Args[3])
 		default:
-			log.Fatalf("Unknown flag for get-certificate command: %s", flag)
+			logger.Fatal("Unknown flag for get-certificate command: %s", flag)
 		}
 
 	case GetCRLCommand:
