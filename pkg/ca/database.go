@@ -153,8 +153,8 @@ func (d *DAO) EraseAllTables() error {
 	var err error
 	tables := []string{
 		"issued_certificates",
-		"revoked_certificates",
-		"certificate_revocation_lists",
+		"crls",
+		"root_ca",
 		// Add other tables here
 	}
 
