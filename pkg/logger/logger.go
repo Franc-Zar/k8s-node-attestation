@@ -16,6 +16,22 @@ var (
 	cyan   = color.New(color.FgCyan)
 )
 
+func CommandSuccess(format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+	fmt.Printf(green.Sprintf("%s\n", message))
+}
+
+func CommandError(format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+	fmt.Printf(red.Sprintf("%s\n", message))
+	os.Exit(1)
+}
+
+func CommandWarning(format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+	fmt.Printf(yellow.Sprintf("%s\n", message))
+}
+
 func Success(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 	fmt.Printf(green.Sprintf("[%s] %s\n", time.Now().Format(timeFormat), message))
