@@ -114,8 +114,19 @@ func main() {
 		flag := os.Args[2]
 		switch flag {
 		case "--common-name", "-cn":
+			commonName := os.Args[3]
 			// Retrieve a certificate by Common Name
-			//attestationCA.GetCertificateByCN(os.Args[3])
+			certificate, err := attestationCA.GetCertificateByCommonName(commonName)
+			if err != nil {
+				logger.Fatal("Failed to get certificate by common name '%s': %v", commonName, err)
+			}
+			logger.Success("%s", string(certificate))
+		case "--root":
+			certificate, err := attestationCA.GetRootCACert()
+			if err != nil {
+				logger.Fatal("Failed to get Root CA certificate: %v", err)
+			}
+			logger.Success("%s", string(certificate))
 		default:
 			logger.Fatal("Unknown flag for get-certificate command: %s", flag)
 		}
