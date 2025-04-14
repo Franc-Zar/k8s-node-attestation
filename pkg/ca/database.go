@@ -34,6 +34,7 @@ func (d *DAO) Init() {
 	createIssuedCertsTableQuery := `
 	CREATE TABLE IF NOT EXISTS issued_certificates (
 		serial_number INTEGER PRIMARY KEY,
+		common_name TEXT NOT NULL,
 		certificate_pem TEXT NOT NULL,
 		issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
@@ -87,10 +88,10 @@ func (d *DAO) DeleteIssuedCertificate(serialNumber int64) error {
 }
 
 // StoreIssuedCertificate stores an issued certificate's serial number and PEM format
-func (d *DAO) StoreIssuedCertificate(serialNumber int64, certPEM []byte) error {
+func (d *DAO) StoreIssuedCertificate(serialNumber int64, commonName string, certPEM []byte) error {
 	_, err := d.db.Exec(`
-	INSERT INTO issued_certificates (serial_number, certificate_pem)
-	VALUES (?, ?)`, serialNumber, certPEM)
+	INSERT INTO issued_certificates (serial_number, common_name, certificate_pem)
+	VALUES (?, ?)`, serialNumber, commonName, certPEM)
 	return err
 }
 
@@ -98,6 +99,16 @@ func (d *DAO) StoreIssuedCertificate(serialNumber int64, certPEM []byte) error {
 func (d *DAO) GetIssuedCertificate(serialNumber int64) ([]byte, error) {
 	var certPEM []byte
 	err := d.db.QueryRow(`SELECT certificate_pem FROM issued_certificates WHERE serial_number = ?`, serialNumber).Scan(&certPEM)
+	if err != nil {
+		return nil, err
+	}
+	return certPEM, nil
+}
+
+// GetIssuedCertificateByCommonName retrieves an issued certificate by common name
+func (d *DAO) GetIssuedCertificateByCommonName(commonName string) ([]byte, error) {
+	var certPEM []byte
+	err := d.db.QueryRow(`SELECT certificate_pem FROM issued_certificates WHERE common_name = ?`, commonName).Scan(&certPEM)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +215,7 @@ func (d *DAO) GetCRL(serialNumber int64) ([]byte, error) {
 	return crlPEM, nil
 }
 
-// GetCRL retrieves the CRL for a given certificate serial number
+// GetLatestCRL retrieves the CRL for a given certificate serial number
 func (d *DAO) GetLatestCRL() ([]byte, error) {
 	var crlPEM []byte
 	err := d.db.QueryRow(`

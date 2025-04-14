@@ -212,12 +212,12 @@ func (s *Server) Init(rootKeyType KeyType) {
 func (s *Server) IssueCertificate(csrPEM []byte) []byte {
 	s.CADao.Open(DatabaseName)
 	defer s.CADao.Close()
-	serialNumber, issuedCert, err := s.signCSR(csrPEM)
+	serialNumber, commonName, issuedCert, err := s.signCSR(csrPEM)
 	if err != nil {
 		logger.Error("failed to issue new certificate: %v", err)
 		return nil
 	}
-	err = s.CADao.StoreIssuedCertificate(serialNumber, issuedCert)
+	err = s.CADao.StoreIssuedCertificate(serialNumber, commonName, issuedCert)
 	if err != nil {
 		logger.Error("failed to store newly issued certificate: %v", err)
 		return nil
@@ -439,13 +439,15 @@ func (s *Server) Reset() {
 	logger.Success("Correctly reset Root CA")
 }
 
-func (s *Server) GetCertificate(commonName string) ([]byte, error) {
+func (s *Server) GetCertificateByCommonName(commonName string) ([]byte, error) {
 	s.CADao.Open(DatabaseName)
 	defer s.CADao.Close()
-	certPEM, err := s.CADao.GetIssuedCertificate()
+	certPEM, err := s.CADao.GetIssuedCertificateByCommonName(commonName)
 	if err != nil {
-
+		logger.Error("Failed to get certificate with CN: '%s': %v", commonName, err)
+		return nil, fmt.Errorf("failed to get certificate with CN: '%s': %v", commonName, err)
 	}
+	return certPEM, nil
 }
 
 // Private
@@ -462,28 +464,30 @@ func generateSerialNumber() (int64, error) {
 }
 
 // signCSR signs a certificate signing request and returns a signed certificate in PEM format
-func (s *Server) signCSR(csrPEM []byte) (int64, []byte, error) {
+func (s *Server) signCSR(csrPEM []byte) (int64, string, []byte, error) {
 	block, _ := pem.Decode(csrPEM)
 	if block == nil || block.Type != "CERTIFICATE REQUEST" {
-		return 0, nil, fmt.Errorf("invalid CSR PEM")
+		return 0, "", nil, fmt.Errorf("invalid CSR PEM")
 	}
 
 	csr, err := x509.ParseCertificateRequest(block.Bytes)
 	if err != nil {
-		return 0, nil, fmt.Errorf("could not parse CSR")
+		return 0, "", nil, fmt.Errorf("could not parse CSR")
 	}
 
+	commonName := csr.Subject.CommonName
+
 	if err := csr.CheckSignature(); err != nil {
-		return 0, nil, fmt.Errorf("invalid CSR signature")
+		return 0, "", nil, fmt.Errorf("invalid CSR signature")
 	}
 
 	newSerialNumber, err := generateSerialNumber()
 	if err != nil {
-		return 0, nil, fmt.Errorf("error while generating certificate serial number")
+		return 0, "", nil, fmt.Errorf("error while generating certificate serial number")
 	}
 
 	if newSerialNumber == 0 {
-		return 0, nil, fmt.Errorf("could not generate certificate serial number")
+		return 0, "", nil, fmt.Errorf("could not generate certificate serial number")
 	}
 
 	certTemplate := &x509.Certificate{
@@ -496,8 +500,8 @@ func (s *Server) signCSR(csrPEM []byte) (int64, []byte, error) {
 
 	certDER, err := x509.CreateCertificate(rand.Reader, certTemplate, s.CARootCert, csr.PublicKey, s.CARootKey)
 	if err != nil {
-		return 0, nil, fmt.Errorf("could not sign certificate")
+		return 0, "", nil, fmt.Errorf("could not sign certificate")
 	}
 
-	return newSerialNumber, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}), nil
+	return newSerialNumber, commonName, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}), nil
 }

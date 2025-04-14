@@ -62,14 +62,14 @@ func main() {
 	case IssueCertificateCommand:
 		// Ensure that the certificate flag is provided
 		if len(os.Args) < 3 {
-			logger.Fatal("Usage: attestation-ca certificate --csr")
+			logger.Fatal("Usage: attestation-ca issue-certificate --csr")
 		}
 		attestationCA.SetCA()
 		flag := os.Args[2]
 		encCSR := os.Args[3]
 		decodedCSR, err := base64.StdEncoding.DecodeString(encCSR)
 		if err != nil {
-			logger.Fatal("Invalid base64 CSR.")
+			logger.Fatal("Invalid base64 CSR")
 		}
 		switch flag {
 		case "--csr":
@@ -97,7 +97,7 @@ func main() {
 			}
 		case "--all", "-a":
 			// Revoke all certificates
-			_, err := attestationCA.RevokeAllCertificates(flagArg)
+			_, err := attestationCA.RevokeAllCertificates()
 			if err != nil {
 				return
 			}
@@ -124,7 +124,7 @@ func main() {
 		attestationCA.SetCA()
 		// Retrieve the Certificate Revocation List (CRL)
 		latestCRL := attestationCA.GetLatestCRL()
-		logger.Success(latestCRL)
+		logger.Success(string(latestCRL))
 
 	default:
 		logger.Fatal("Unknown command: %s", command)

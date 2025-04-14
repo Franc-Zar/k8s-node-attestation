@@ -3,15 +3,15 @@ module github.com/franc-zar/k8s-node-attestation/cmd/ca
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250411151218-55c2b3f5e303
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250411151218-55c2b3f5e303
+	github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250411160526-c409377aceb3
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250411160526-c409377aceb3
 )
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250411151218-55c2b3f5e303 // indirect
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250411151218-55c2b3f5e303 // indirect
+	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250411160526-c409377aceb3 // indirect
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250411160526-c409377aceb3 // indirect
 	github.com/google/go-attestation v0.5.1 // indirect
 	github.com/google/go-tpm v0.9.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
