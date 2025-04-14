@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	cryptoUtils "github.com/franc-zar/k8s-node-attestation/pkg/crypto"
-	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	"math"
 	"math/big"
 	"time"
@@ -93,74 +92,75 @@ func New() *Server {
 	return newServer
 }
 
-func (s *Server) Help() {
-	logger.CommandSuccess(HelpString)
+func (s *Server) Help() string {
+	return HelpString
 }
 
-func (s *Server) SetCA() {
+func (s *Server) SetCA() error {
 	var err error
 	s.caDao.Open(DatabaseName)
 	defer s.caDao.Close()
 	s.caRootCertPEM, s.caRootKeyPEM, err = s.caDao.GetRootCA()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			logger.CommandError("root CA is not initialized")
+			return fmt.Errorf("root CA is not initialized")
 		} else {
-			logger.CommandError("failed to get root CA certificate and key: %v", err)
+			return fmt.Errorf("failed to get root CA certificate and key: %v", err)
 		}
 	}
 	s.caRootCert, err = cryptoUtils.LoadCertificateFromPEM(s.caRootCertPEM)
 	if err != nil {
-		logger.CommandError("failed to load root CA certificate: %v", err)
+		return fmt.Errorf("failed to load root CA certificate: %v", err)
 	}
 
 	// Decode the private key
 	privateKey, err := cryptoUtils.DecodePrivateKeyFromPEM(s.caRootKeyPEM)
 	if err != nil {
-		logger.CommandError("failed to decode private key: %v", err)
+		return fmt.Errorf("failed to decode private key: %v", err)
 	}
 	switch privateKey.(type) {
 	case *rsa.PrivateKey, *ecdsa.PrivateKey:
 		s.caRootKey = privateKey
 	default:
-		logger.CommandError("unsupported private key type: %T", privateKey)
+		return fmt.Errorf("unsupported private key type: %T", privateKey)
 	}
+	return nil
 }
 
 // InitCA initializes the CA and generates a self-signed certificate
-func (s *Server) InitCA(rootKeyType KeyType) {
+func (s *Server) InitCA(rootKeyType KeyType) error {
 	s.caDao.Open(DatabaseName)
 	defer s.caDao.Close()
 	err := s.caDao.EraseAllTables()
 	if err != nil {
-		logger.CommandError("failed to erase all tables: %v", err)
+		return fmt.Errorf("failed to erase all tables: %v", err)
 	}
 
 	switch rootKeyType {
 	case RSA:
 		rsaKey, err := rsa.GenerateKey(rand.Reader, 4096)
 		if err != nil {
-			logger.CommandError("could not generate root CA RSA key:", err)
+			return fmt.Errorf("could not generate root CA RSA key: %v", err)
 		}
 		s.caRootKey = rsaKey
 
 	case ECDSA:
 		ecKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
-			logger.CommandError("could not generate root CA ECDSA key:", err)
+			return fmt.Errorf("could not generate root CA ECDSA key: %v", err)
 		}
 		s.caRootKey = ecKey
 	default:
-		logger.CommandError("unsupported root key type")
+		return fmt.Errorf("unsupported root key type")
 	}
 
 	newSerialNumber, err := generateSerialNumber()
 	if err != nil {
-		logger.CommandError("error while generating root ca certificate serial number")
+		return fmt.Errorf("error while generating root ca certificate serial number")
 	}
 
 	if newSerialNumber == 0 {
-		logger.CommandError("could not generate root ca certificate serial number")
+		return fmt.Errorf("could not generate root ca certificate serial number")
 	}
 
 	template := &x509.Certificate{
@@ -178,17 +178,17 @@ func (s *Server) InitCA(rootKeyType KeyType) {
 
 	signer, ok := s.caRootKey.(crypto.Signer)
 	if !ok {
-		logger.CommandError("root key does not implement crypto.Signer")
+		return fmt.Errorf("root key does not implement crypto.Signer")
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, template, template, signer.Public(), signer)
 	if err != nil {
-		logger.CommandError("could not create root CA certificate: %v", err)
+		return fmt.Errorf("could not create root CA certificate: %v", err)
 	}
 
 	s.caRootCert, err = x509.ParseCertificate(certDER)
 	if err != nil {
-		logger.CommandError("could not parse root ca certificate")
+		return fmt.Errorf("could not parse root ca certificate")
 	}
 
 	s.caRootCertPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
@@ -201,49 +201,47 @@ func (s *Server) InitCA(rootKeyType KeyType) {
 	case *ecdsa.PrivateKey:
 		b, err := x509.MarshalECPrivateKey(key)
 		if err != nil {
-			logger.CommandError("could not marshal ECDSA key: %v", err)
+			return fmt.Errorf("could not marshal ECDSA key: %v", err)
 		}
 		s.caRootKeyPEM = pem.EncodeToMemory(&pem.Block{
 			Type:  "EC PRIVATE KEY",
 			Bytes: b,
 		})
 	default:
-		logger.CommandError("unsupported key type: %T", key)
+		return fmt.Errorf("unsupported key type: %T", key)
 	}
 
 	err = s.caDao.StoreRootCA(s.caRootCertPEM, s.caRootKeyPEM)
 	if err != nil {
-		logger.CommandError("could not store root CA certificate")
+		return fmt.Errorf("could not store root CA certificate")
 	}
-	logger.CommandSuccess("Correctly setup Root CA")
+	return nil
 }
 
-func (s *Server) IssueCertificate(csrPEM []byte) []byte {
+func (s *Server) IssueCertificate(csrPEM []byte) ([]byte, error) {
 	s.caDao.Open(DatabaseName)
 	defer s.caDao.Close()
 	serialNumber, commonName, issuedCert, err := s.signCSR(csrPEM)
 	if err != nil {
-		logger.CommandError("failed to issue new certificate: %v", err)
-		return nil
+		return nil, fmt.Errorf("failed to issue new certificate: %v", err)
+
 	}
 	err = s.caDao.StoreIssuedCertificate(serialNumber, commonName, issuedCert)
 	if err != nil {
-		logger.CommandError("failed to store newly issued certificate: %v", err)
-		return nil
+		return nil, fmt.Errorf("failed to store newly issued certificate: %v", err)
+
 	}
-	logger.CommandSuccess("Correctly issued new certificate")
-	return issuedCert
+	return issuedCert, nil
 }
 
-func (s *Server) GetLatestCRL() []byte {
+func (s *Server) GetLatestCRL() ([]byte, error) {
 	s.caDao.Open(DatabaseName)
 	defer s.caDao.Close()
 	crl, err := s.caDao.GetLatestCRL()
 	if err != nil {
-		logger.CommandError("failed to get latest crl: %v", err)
+		return nil, fmt.Errorf("failed to get latest crl: %v", err)
 	}
-	logger.CommandSuccess("successfully retrieved latest crl")
-	return crl
+	return crl, nil
 }
 
 func (s *Server) RevokeCertificate(certPEM []byte) ([]byte, error) {
@@ -332,7 +330,6 @@ func (s *Server) RevokeCertificate(certPEM []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to delete issued certificate: %v", err)
 	}
 
-	logger.CommandSuccess("Revoked certificate")
 	return crlPEM, nil
 }
 
@@ -436,18 +433,17 @@ func (s *Server) RevokeAllCertificates() ([]byte, error) {
 		return nil, err
 	}
 
-	logger.CommandSuccess("Revoked all certificates")
 	return crlPEM, nil
 }
 
-func (s *Server) Reset() {
+func (s *Server) Reset() error {
 	s.caDao.Open(DatabaseName)
 	defer s.caDao.Close()
 	err := s.caDao.EraseAllTables()
 	if err != nil {
-		logger.CommandError("failed to erase all tables: %v", err)
+		return fmt.Errorf("failed to erase all tables: %v", err)
 	}
-	logger.CommandSuccess("Correctly reset Root CA")
+	return nil
 }
 
 func (s *Server) GetCertificateByCommonName(commonName string) ([]byte, error) {
@@ -455,7 +451,6 @@ func (s *Server) GetCertificateByCommonName(commonName string) ([]byte, error) {
 	defer s.caDao.Close()
 	certPEM, err := s.caDao.GetIssuedCertificateByCommonName(commonName)
 	if err != nil {
-		logger.CommandError("Failed to get certificate with CN: '%s': %v", commonName, err)
 		return nil, fmt.Errorf("failed to get certificate with CN: '%s': %v", commonName, err)
 	}
 	return certPEM, nil
@@ -465,7 +460,7 @@ func (s *Server) GetRootCACert() ([]byte, error) {
 	if s.caRootCertPEM != nil {
 		return s.caRootCertPEM, nil
 	}
-	return nil, fmt.Errorf("root CA certificate does not exist")
+	return nil, fmt.Errorf("root CA certificate not initialized")
 }
 
 // Private

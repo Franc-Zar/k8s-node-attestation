@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	HelpCommandName          = "help"
+	HelpCommand              = "help"
 	ResetCommand             = "reset"
 	InitCommand              = "init"
 	IssueCertificateCommand  = "issue-certificate"
@@ -23,11 +23,10 @@ func main() {
 	}
 
 	attestationCA := ca.New()
-
 	command := os.Args[1]
 
 	switch command {
-	case HelpCommandName:
+	case HelpCommand:
 		// Show help message
 		attestationCA.Help()
 
@@ -61,8 +60,8 @@ func main() {
 
 	case IssueCertificateCommand:
 		// Ensure that the certificate flag is provided
-		if len(os.Args) < 3 {
-			logger.CommandError("Usage: attestation-ca issue-certificate --csr")
+		if len(os.Args) < 4 {
+			logger.CommandError("Usage: attestation-ca issue-certificate --csr <csr-base64>")
 		}
 		attestationCA.SetCA()
 		flag := os.Args[2]
@@ -83,14 +82,14 @@ func main() {
 	case RevokeCertificateCommand:
 		// Ensure that the revoke certificate flags are provided
 		if len(os.Args) < 3 {
-			logger.CommandError("Usage: attestation-ca revoke-certificate --cert, -c | --all, -a")
+			logger.CommandError("Usage: attestation-ca revoke-certificate --cert, -c <pem-certificate-base64> | --all, -a")
 		}
 		attestationCA.SetCA()
 		flag := os.Args[2]
 		switch flag {
 		case "--cert", "-c":
 			if len(os.Args) < 4 {
-				logger.CommandError("Usage: attestation-ca revoke-certificate --cert, -c <pem-certificate>")
+				logger.CommandError("Usage: attestation-ca revoke-certificate --cert, -c <pem-certificate-base64>")
 			}
 			flagArg := []byte(os.Args[3])
 

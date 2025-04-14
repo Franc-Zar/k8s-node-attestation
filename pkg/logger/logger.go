@@ -23,7 +23,10 @@ func CommandSuccess(format string, args ...interface{}) {
 
 func CommandError(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
-	fmt.Printf(red.Sprintf("%s\n", message))
+	_, err := fmt.Fprintf(os.Stderr, red.Sprintf("%s\n", message))
+	if err != nil {
+		fmt.Printf("Error writing to stderr: %v\n", err)
+	}
 	os.Exit(1)
 }
 
