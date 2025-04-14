@@ -82,6 +82,14 @@ func (k KeyType) String() string {
 	}
 }
 
+func New() *Server {
+	newServer := &Server{}
+	newServer.CADao.Open(DatabaseName)
+	defer newServer.CADao.Close()
+	newServer.CADao.Init()
+	return newServer
+}
+
 func (s *Server) Help() {
 	logger.Info(HelpString)
 }
@@ -116,16 +124,14 @@ func (s *Server) SetCA() {
 	}
 }
 
-// Init initializes the CA and generates a self-signed certificate
-func (s *Server) Init(rootKeyType KeyType) {
+// InitCA initializes the CA and generates a self-signed certificate
+func (s *Server) InitCA(rootKeyType KeyType) {
 	s.CADao.Open(DatabaseName)
 	defer s.CADao.Close()
 	err := s.CADao.EraseAllTables()
 	if err != nil {
 		logger.Fatal("failed to erase all tables: %v", err)
 	}
-
-	s.CADao.Init()
 
 	switch rootKeyType {
 	case RSA:

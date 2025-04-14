@@ -10,6 +10,8 @@ github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250411160526-c409377ac
 github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250411160526-c409377aceb3/go.mod h1:x944E2VMfMStCstUko/0lbtoVq/naLqHKnHGpsKlNrg=
 github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250414103401-8e431665f7e0 h1:NTSS4cr9VrR9UfdE53EKKWpzAa/+QamiTVwlRssAhm4=
 github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250414103401-8e431665f7e0/go.mod h1:x944E2VMfMStCstUko/0lbtoVq/naLqHKnHGpsKlNrg=
+github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250414123510-76f154d7e890 h1:CuvsAlc0Q8CxRC6qDKyQqF5BcOyn9G5YIGgXXxlwm4w=
+github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250414123510-76f154d7e890/go.mod h1:Cu/4HztMzwzWqg6e4VbNTx/nVmpz6y24qx4VEkMECSU=
 github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250410164253-aab2fce2853d h1:tiJC4yH8vcYuMeWcT14lzz3vVBQtp2fCJIDKSyIGzcI=
 github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250410164253-aab2fce2853d/go.mod h1:XU313UWGoumazhJpVhpEyHI3FdxMhhBHCtT0DZsnDvA=
 github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250411083456-fd081831de33 h1:Lo7w1wHZJvOQv+HQXlTLyxg0pBfTZva0lzp3RJ+RtbY=

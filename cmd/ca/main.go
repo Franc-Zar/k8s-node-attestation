@@ -22,7 +22,7 @@ func main() {
 		logger.Fatal("Usage: attestation-ca <command> [flag]\nattestation-ca help for more information")
 	}
 
-	attestationCA := &ca.Server{}
+	attestationCA := ca.New()
 
 	command := os.Args[1]
 
@@ -49,9 +49,9 @@ func main() {
 			keyAlg := os.Args[3]
 			switch keyAlg {
 			case "ECDSA":
-				attestationCA.Init(ca.ECDSA)
+				attestationCA.InitCA(ca.ECDSA)
 			case "RSA":
-				attestationCA.Init(ca.RSA)
+				attestationCA.InitCA(ca.RSA)
 			default:
 				logger.Fatal("Invalid key algorithm. Use 'ECDSA' or 'RSA'")
 			}
