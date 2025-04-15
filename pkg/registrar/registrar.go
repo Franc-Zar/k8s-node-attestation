@@ -5,7 +5,7 @@ import (
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 )
 
-const DatabaseName = "attestation-ca.db"
+const DatabaseName = "attestation-registrar.db"
 
 type Server struct {
 	registrarDao DAO

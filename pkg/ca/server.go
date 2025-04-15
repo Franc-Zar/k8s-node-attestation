@@ -20,7 +20,7 @@ import (
 
 const CommonName = "Kubernetes Attestation Root CA"
 const Organization = "Kubernetes Attestation"
-const DatabaseName = "kubernetes-ca.db"
+const DatabaseName = "attestation-ca.db"
 const HelpString = `Attestation CA is a plugin that manages certificates for components involved in the attestation process of nodes within a Kubernetes cluster.
 
 Usage:
