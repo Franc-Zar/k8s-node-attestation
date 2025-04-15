@@ -84,12 +84,21 @@ func (k KeyType) String() string {
 	}
 }
 
-func New() *Server {
+func New() (*Server, error) {
 	newServer := &Server{}
-	newServer.caDao.Open(DatabaseName)
-	defer newServer.caDao.Close()
-	newServer.caDao.Init()
-	return newServer
+	err := newServer.caDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Root CA database")
+	}
+	err = newServer.caDao.Init()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Root CA database")
+	}
+	err = newServer.caDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Root CA database")
+	}
+	return newServer, nil
 }
 
 func (s *Server) Help() string {
@@ -98,8 +107,10 @@ func (s *Server) Help() string {
 
 func (s *Server) SetCA() error {
 	var err error
-	s.caDao.Open(DatabaseName)
-	defer s.caDao.Close()
+	err = s.caDao.Open(DatabaseName)
+	if err != nil {
+		return fmt.Errorf("failed to open Root CA database")
+	}
 	s.caRootCertPEM, s.caRootKeyPEM, err = s.caDao.GetRootCA()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -124,14 +135,22 @@ func (s *Server) SetCA() error {
 	default:
 		return fmt.Errorf("unsupported private key type: %T", privateKey)
 	}
+
+	err = s.caDao.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close Root CA database")
+	}
+
 	return nil
 }
 
 // InitCA initializes the CA and generates a self-signed certificate
 func (s *Server) InitCA(rootKeyType KeyType) error {
-	s.caDao.Open(DatabaseName)
-	defer s.caDao.Close()
-	err := s.caDao.EraseAllTables()
+	err := s.caDao.Open(DatabaseName)
+	if err != nil {
+		return fmt.Errorf("failed to open Root CA database")
+	}
+	err = s.caDao.EraseAllTables()
 	if err != nil {
 		return fmt.Errorf("failed to erase all tables: %v", err)
 	}
@@ -215,12 +234,15 @@ func (s *Server) InitCA(rootKeyType KeyType) error {
 	if err != nil {
 		return fmt.Errorf("could not store root CA certificate")
 	}
+
 	return nil
 }
 
 func (s *Server) IssueCertificate(csrPEM []byte) ([]byte, error) {
-	s.caDao.Open(DatabaseName)
-	defer s.caDao.Close()
+	err := s.caDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Root CA database")
+	}
 	serialNumber, commonName, issuedCert, err := s.signCSR(csrPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue new certificate: %v", err)
@@ -231,23 +253,35 @@ func (s *Server) IssueCertificate(csrPEM []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to store newly issued certificate: %v", err)
 
 	}
+
+	err = s.caDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Root CA database")
+	}
 	return issuedCert, nil
 }
 
 func (s *Server) GetLatestCRL() ([]byte, error) {
-	s.caDao.Open(DatabaseName)
-	defer s.caDao.Close()
+	err := s.caDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Root CA database")
+	}
 	crl, err := s.caDao.GetLatestCRL()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest crl: %v", err)
+	}
+	err = s.caDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Root CA database")
 	}
 	return crl, nil
 }
 
 func (s *Server) RevokeCertificate(certPEM []byte) ([]byte, error) {
-	s.caDao.Open(DatabaseName)
-	defer s.caDao.Close()
-	// Decode the input PEM certificate
+	err := s.caDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Root CA database")
+	}
 	block, _ := pem.Decode(certPEM)
 	if block == nil || block.Type != "CERTIFICATE" {
 		return nil, fmt.Errorf("invalid PEM certificate")
@@ -330,13 +364,19 @@ func (s *Server) RevokeCertificate(certPEM []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to delete issued certificate: %v", err)
 	}
 
+	err = s.caDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Root CA database")
+	}
+
 	return crlPEM, nil
 }
 
 func (s *Server) RevokeAllCertificates() ([]byte, error) {
-	s.caDao.Open(DatabaseName)
-	defer s.caDao.Close()
-	// Retrieve all issued certificates
+	err := s.caDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Root CA database")
+	}
 	issuedCertsPEM, err := s.caDao.GetAllIssuedCertificates()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issued certificates: %v", err)
@@ -433,25 +473,42 @@ func (s *Server) RevokeAllCertificates() ([]byte, error) {
 		return nil, err
 	}
 
+	err = s.caDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Root CA database")
+	}
+
 	return crlPEM, nil
 }
 
 func (s *Server) Reset() error {
-	s.caDao.Open(DatabaseName)
-	defer s.caDao.Close()
-	err := s.caDao.EraseAllTables()
+	err := s.caDao.Open(DatabaseName)
+	if err != nil {
+		return fmt.Errorf("failed to open Root CA database")
+	}
+	err = s.caDao.EraseAllTables()
 	if err != nil {
 		return fmt.Errorf("failed to erase all tables: %v", err)
+	}
+	err = s.caDao.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close Root CA database")
 	}
 	return nil
 }
 
 func (s *Server) GetCertificateByCommonName(commonName string) ([]byte, error) {
-	s.caDao.Open(DatabaseName)
-	defer s.caDao.Close()
+	err := s.caDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Root CA database")
+	}
 	certPEM, err := s.caDao.GetIssuedCertificateByCommonName(commonName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get certificate with CN: '%s': %v", commonName, err)
+	}
+	err = s.caDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Root CA database")
 	}
 	return certPEM, nil
 }
