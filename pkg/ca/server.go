@@ -24,7 +24,7 @@ const DatabaseName = "kubernetes-ca.db"
 const HelpString = `Attestation CA is a plugin that manages certificates for components involved in the attestation process of nodes within a Kubernetes cluster.
 
 Usage:
-  attestation-ca <command> [--flags]
+  attestation-ca <command> --flags [arguments]
 
 Commands:
   help
@@ -39,17 +39,17 @@ Commands:
           a private signing key using the chosen algorithm and creating the root certificate
 
   issue-certificate
-      --csr
+      --csr <csr-base64>
           Issue a certificate using a Certificate Signing Request (CSR) base64-encoded
 
   revoke-certificate
-      --cert, -c
-          Revoke a specific certificate using its PEM-encoded content
-      --all, -a
+      --cert, -c <pem-certificate-base64>
+          Revoke a specific certificate by providing its pem certificate base64-encoded
+      --all, -a 
           Revoke all issued certificates
 
   get-certificate
-      --common-name, -cn
+      --common-name, -cn <common-name>
           Retrieve a certificate by Common Name
       --root
 		  Retrieve Root CA certificate

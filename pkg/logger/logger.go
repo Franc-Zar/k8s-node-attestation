@@ -21,6 +21,11 @@ func CommandSuccess(format string, args ...interface{}) {
 	fmt.Printf(green.Sprintf("%s\n", message))
 }
 
+func CommandInfo(format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+	fmt.Printf(cyan.Sprintf("%s\n", message))
+}
+
 func CommandError(format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 	_, err := fmt.Fprintf(os.Stderr, red.Sprintf("%s\n", message))

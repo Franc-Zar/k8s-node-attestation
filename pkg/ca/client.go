@@ -14,86 +14,88 @@ const (
 	RevokeCertificateCommandName = "revoke-certificate"
 	GetCertificateCommandName    = "get-certificate"
 	GetCRLCommandName            = "get-crl"
+
+	KubernetesCaPluginCommandName = "kubectl attestation-ca"
 )
 
 // HelpCommand runs the 'kubectl attestation-ca help' command and prints its output
 func HelpCommand() {
-	cmd := exec.Command("kubectl attestation-ca", HelpCommandName)
+	cmd := exec.Command(KubernetesCaPluginCommandName, HelpCommandName)
 	output, err := cmd.Output()
 	if err != nil {
-		logger.CommandError("error running help command: %v", err)
+		logger.CommandError("error running %s command: %v", HelpCommandName, err)
 	}
-	logger.CommandSuccess(string(output))
+	logger.CommandSuccess("%s", output)
 }
 
 func ResetCommand() {
-	cmd := exec.Command("kubectl attestation-ca", ResetCommandName)
+	cmd := exec.Command(KubernetesCaPluginCommandName, ResetCommandName)
 	output, err := cmd.Output()
 	if err != nil {
-		logger.CommandError("error running reset command: %v", err)
+		logger.CommandError("error running %s command: %v", ResetCommandName, err)
 	}
-	logger.CommandSuccess(string(output))
+	logger.CommandSuccess("%s", output)
 }
 
 func InitCommand(rootKeyAlg string) {
-	cmd := exec.Command("kubectl attestation-ca", InitCommandName, "--root-key-alg", rootKeyAlg)
+	cmd := exec.Command(KubernetesCaPluginCommandName, InitCommandName, "--root-key-alg", rootKeyAlg)
 	output, err := cmd.Output()
 	if err != nil {
 		logger.CommandError("error running init command: %v", err)
 	}
-	logger.CommandSuccess(string(output))
+	logger.CommandSuccess("%s", output)
 }
 
 func IssueCertificateCommand(csr string) {
-	cmd := exec.Command("kubectl attestation-ca", IssueCertificateCommandName, "--csr", csr)
+	cmd := exec.Command(KubernetesCaPluginCommandName, IssueCertificateCommandName, "--csr", csr)
 	output, err := cmd.Output()
 	if err != nil {
-		logger.CommandError("error running issue-certificate command: %v", err)
+		logger.CommandError("error running %s command: %v", IssueCertificateCommandName, err)
 	}
-	logger.CommandSuccess(string(output))
+	logger.CommandSuccess("%s", output)
 }
 
 func RevokeCertificateCommand(csr string) {
-	cmd := exec.Command("kubectl attestation-ca", RevokeCertificateCommandName, "--csr", csr)
+	cmd := exec.Command(KubernetesCaPluginCommandName, RevokeCertificateCommandName, "--csr", csr)
 	output, err := cmd.Output()
 	if err != nil {
-		logger.CommandError("error running issue-certificate command: %v", err)
+		logger.CommandError("error running %s command: %v", RevokeCertificateCommandName, err)
 	}
-	logger.CommandSuccess(string(output))
+	logger.CommandSuccess("%s", output)
 }
 
 func RevokeAllCertificateCommand() {
-	cmd := exec.Command("kubectl attestation-ca", RevokeCertificateCommandName, "--all")
+	cmd := exec.Command(KubernetesCaPluginCommandName, RevokeCertificateCommandName, "--all")
 	output, err := cmd.Output()
 	if err != nil {
-		logger.CommandError("error running issue-certificate command: %v", err)
+		logger.CommandError("error running %s command: %v", RevokeCertificateCommandName, err)
 	}
-	logger.CommandSuccess(string(output))
+	logger.CommandSuccess("%s", output)
 }
 
 func GetCertificateCommand(commonName string) {
-	cmd := exec.Command("kubectl attestation-ca", GetCertificateCommandName, "--common-name", commonName)
+	cmd := exec.Command(KubernetesCaPluginCommandName, GetCertificateCommandName, "--common-name", commonName)
 	output, err := cmd.Output()
 	if err != nil {
-		logger.CommandError("error running issue-certificate command: %v", err)
+		logger.CommandError("error %s command: %v", GetCertificateCommandName, err)
 	}
-	logger.CommandSuccess(string(output))
+	logger.CommandSuccess("%s", output)
 }
 
 func GetRootCertificateCommand() {
-	cmd := exec.Command("kubectl attestation-ca", GetCertificateCommandName, "--root")
+	cmd := exec.Command(KubernetesCaPluginCommandName, GetCertificateCommandName, "--root")
 	output, err := cmd.Output()
 	if err != nil {
-		logger.CommandError("error running issue-certificate command: %v", err)
+		logger.CommandError("error running %s command: %v", GetCertificateCommandName, err)
 	}
-	logger.CommandSuccess(string(output))
+	logger.CommandSuccess("%s", output)
 }
 
 func GetCRLCommand() {
-	cmd := exec.Command("kubectl attestation-ca", GetCRLCommandName)
+	cmd := exec.Command(KubernetesCaPluginCommandName, GetCRLCommandName)
 	output, err := cmd.Output()
 	if err != nil {
-		logger.CommandError("error running issue-certificate command: %v", err)
+		logger.CommandError("error running %s command: %v", GetCRLCommandName, err)
 	}
-	logger.CommandSuccess(string(output))
+	logger.CommandSuccess("%s", output)
 }
