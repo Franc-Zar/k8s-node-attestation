@@ -5,7 +5,7 @@ import (
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 )
 
-const DatabaseName = "kubernetes-ca.db"
+const DatabaseName = "attestation-ca.db"
 
 type Server struct {
 	registrarDao DAO
