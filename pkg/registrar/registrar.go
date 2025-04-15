@@ -17,33 +17,49 @@ func (s *Server) Init() error {
 		return fmt.Errorf("failed to open Registrar database: %w", err)
 	}
 
-	defer func(registrarDao *DAO) {
-		err := registrarDao.Close()
-		if err != nil {
-			return
-		}
-	}(&s.registrarDao)
-
 	err = s.registrarDao.Init()
 	if err != nil {
 		return fmt.Errorf("failed to initialize Registrar database: %w", err)
 	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+
 	return nil
 }
 
 func (s *Server) RegisterNode(node *model.WorkerNode) error {
 	err := s.registrarDao.Open(DatabaseName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open Registrar database: %w", err)
 	}
-	defer s.registrarDao.Close()
-	err := s.registrarDao.AddWorker(node)
+	err = s.registrarDao.AddWorker(node)
 	if err != nil {
 		return fmt.Errorf("failed to register worker node: %w", err)
 	}
+	err = s.registrarDao.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return nil
 }
 
-func (s *Server) UnregisterNode(node *model.WorkerNode) {
-	s.registrarDao.Open(DatabaseName)
-	defer s.registrarDao.Close()
+func (s *Server) UnregisterNode(nodeUUID string) error {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	err = s.registrarDao.DeleteWorker(nodeUUID)
+	if err != nil {
+		return fmt.Errorf("failed to unregister worker node: %w", err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return nil
 }

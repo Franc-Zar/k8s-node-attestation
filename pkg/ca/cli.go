@@ -10,7 +10,11 @@ func RootCaCLI(args []string) {
 		logger.CommandError("Usage: attestation-ca <command> [flag]\nattestation-ca help for more information")
 	}
 
-	attestationCA := New()
+	attestationCA, err := New()
+	if err != nil {
+		logger.CommandError(err.Error())
+		return
+	}
 	command := args[1]
 
 	switch command {

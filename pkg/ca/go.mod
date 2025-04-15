@@ -4,7 +4,7 @@ go 1.23.4
 
 require (
 	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250415075920-ea4a3fc6155d
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250415075920-ea4a3fc6155d
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250415092637-f494aebc9f64
 	modernc.org/sqlite v1.37.0
 )
 

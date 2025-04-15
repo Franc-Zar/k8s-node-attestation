@@ -3,8 +3,8 @@ module github.com/franc-zar/k8s-node-attestation/pkg/worker_handler
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/cluster v0.0.0-20250415075920-ea4a3fc6155d
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250415075920-ea4a3fc6155d
+	github.com/franc-zar/k8s-node-attestation/pkg/cluster v0.0.0-20250415092637-f494aebc9f64
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250415092637-f494aebc9f64
 	k8s.io/api v0.32.3
 	k8s.io/client-go v0.32.3
 )
@@ -13,7 +13,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250411083456-fd081831de33 // indirect
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250415075920-ea4a3fc6155d // indirect
 	github.com/fxamacker/cbor/v2 v2.8.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
@@ -52,6 +52,6 @@ require (
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.6.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )

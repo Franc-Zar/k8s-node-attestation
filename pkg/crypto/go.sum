@@ -6,6 +6,8 @@ github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250410164253-aab2fc
 github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250410164253-aab2fce2853d/go.mod h1:45w2KM9wIHypCIT9tQXq+d02udj0hdrJ2hdB5I6sJDQ=
 github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250411083456-fd081831de33 h1:s6DMPhLdnVre1/V3DPHAtj+cTnPOkStS1z7JxFCBPYo=
 github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250411083456-fd081831de33/go.mod h1:45w2KM9wIHypCIT9tQXq+d02udj0hdrJ2hdB5I6sJDQ=
+github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250415075920-ea4a3fc6155d h1:XGUe0+pzykwK4y+jPzC1WMBGVrgEKfriNga1WDHCkoU=
+github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250415075920-ea4a3fc6155d/go.mod h1:45w2KM9wIHypCIT9tQXq+d02udj0hdrJ2hdB5I6sJDQ=
 github.com/google/go-attestation v0.5.1 h1:jqtOrLk5MNdliTKjPbIPrAaRKJaKW+0LIU2n/brJYms=
 github.com/google/go-attestation v0.5.1/go.mod h1:KqGatdUhg5kPFkokyzSBDxwSCFyRgIgtRkMp6c3lOBQ=
 github.com/google/go-tpm v0.9.0 h1:sQF6YqWMi+SCXpsmS3fd21oPy/vSddwZry4JnmltHVk=
