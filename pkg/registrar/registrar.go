@@ -1,103 +1,49 @@
 package registrar
 
 import (
-	"github.com/franc-zar/k8s-node-attestation/pkg/cluster"
-	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/tools/cache"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"fmt"
+	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 )
 
-type Registrar struct {
-	interactor          cluster.Interactor
-	informerFactory     informers.SharedInformerFactory
-	attestationDatabase DAO
-	defaultResync       int
-	dataSourceName      string
+const DatabaseName = "kubernetes-ca.db"
+
+type Server struct {
+	registrarDao DAO
 }
 
-func (r *Registrar) Init(defaultResync int, dataSourceName string) {
-	r.interactor.ConfigureKubernetesClient()
-	r.informerFactory = informers.NewSharedInformerFactory(r.interactor.ClientSet, time.Minute*time.Duration(defaultResync))
-	r.attestationDatabase.Open(dataSourceName)
-	r.attestationDatabase.Init()
-}
-
-func (r *Registrar) deleteNodeHandling(obj interface{}) {
-	node := obj.(*corev1.Node)
-	r.unregisterNode(node)
-}
-
-func (r *Registrar) addNodeHandling(obj interface{}) {
-	node := obj.(*corev1.Node)
-	r.registerNode(node)
-}
-
-func (r *Registrar) WatchNodes() {
-	stopCh := setupSignalHandler()
-	nodeInformer := r.informerFactory.Core().V1().Nodes().Informer()
-
-	nodeEventHandler := cache.ResourceEventHandlerFuncs{
-		AddFunc:    r.addNodeHandling,
-		UpdateFunc: func(old, new interface{}) {},
-		DeleteFunc: r.deleteNodeHandling,
-	}
-
-	// Add event handlers for Node events
-	_, err := nodeInformer.AddEventHandler(nodeEventHandler)
+func (s *Server) Init() error {
+	err := s.registrarDao.Open(DatabaseName)
 	if err != nil {
-		logger.Fatal("failed to create node event handler: %v", err)
+		return fmt.Errorf("failed to open Registrar database: %w", err)
 	}
 
-	// Convert `chan os.Signal` to `<-chan struct{}`
-	stopStructCh := make(chan struct{})
-	go func() {
-		<-stopCh // Wait for signal
-		close(stopStructCh)
-	}()
+	defer func(registrarDao *DAO) {
+		err := registrarDao.Close()
+		if err != nil {
+			return
+		}
+	}(&s.registrarDao)
 
-	// Start the informer
-	go nodeInformer.Run(stopStructCh)
-
-	// Wait for the informer to sync
-	if !cache.WaitForCacheSync(stopStructCh, nodeInformer.HasSynced) {
-		logger.Warning("Timed out waiting for caches to sync")
-		return
-	}
-	<-stopStructCh
-	defer r.attestationDatabase.Close()
-}
-
-func (r *Registrar) registerNode(node *corev1.Node) {
-
-}
-
-func (r *Registrar) unregisterNode(node *corev1.Node) {
-	nodeUID := string(node.GetUID())
-	nodeName := node.GetName()
-
-	err := r.attestationDatabase.DeleteWorker(nodeUID)
+	err = s.registrarDao.Init()
 	if err != nil {
-		logger.Error("Failed to delete worker node '%s' from attestation database: %v", nodeUID, err)
-		return
+		return fmt.Errorf("failed to initialize Registrar database: %w", err)
 	}
-	logger.Success("Deleted worker node '%s' from attestation database", nodeUID)
-
-	err = r.interactor.DeleteAgent(nodeName)
-	if err != nil {
-		logger.Error("Failed to delete agent from worker node '%s': %v", nodeUID, err)
-		return
-	}
-	logger.Success("Deleted agent from worker node '%s'", nodeUID)
+	return nil
 }
 
-// setupSignalHandler sets up a signal handler for graceful termination.
-func setupSignalHandler() chan os.Signal {
-	stopCh := make(chan os.Signal, 1)
-	signal.Notify(stopCh, syscall.SIGINT, syscall.SIGTERM)
-	return stopCh
+func (s *Server) RegisterNode(node *model.WorkerNode) error {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return err
+	}
+	defer s.registrarDao.Close()
+	err := s.registrarDao.AddWorker(node)
+	if err != nil {
+		return fmt.Errorf("failed to register worker node: %w", err)
+	}
+}
+
+func (s *Server) UnregisterNode(node *model.WorkerNode) {
+	s.registrarDao.Open(DatabaseName)
+	defer s.registrarDao.Close()
 }

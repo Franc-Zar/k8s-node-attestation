@@ -3,7 +3,6 @@ package registrar
 import (
 	"database/sql"
 	"fmt"
-	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	_ "modernc.org/sqlite"
 )
@@ -12,19 +11,21 @@ type DAO struct {
 	db *sql.DB
 }
 
-func (d *DAO) Close() {
+func (d *DAO) Close() error {
 	err := d.db.Close()
 	if err != nil {
-		logger.Fatal("Failed to close attestation database: %v", err)
+		return fmt.Errorf("failed to close attestation database: %v", err)
 	}
+	return nil
 }
 
-func (d *DAO) Open(dataSourceName string) {
+func (d *DAO) Open(dataSourceName string) error {
 	var err error
 	d.db, err = sql.Open("sqlite", dataSourceName)
 	if err != nil {
-		logger.Fatal("failed to open registrar db: %v", err)
+		return fmt.Errorf("failed to open registrar db: %v", err)
 	}
+	return nil
 }
 
 func (d *DAO) initCACertificates() error {
@@ -78,7 +79,7 @@ func (d *DAO) initTPMVendors() error {
 }
 
 // Init sets up the database and creates necessary tables if they don't exist.
-func (d *DAO) Init() {
+func (d *DAO) Init() error {
 	var err error
 	// Create workers table
 	createWorkerTableQuery := `
@@ -88,7 +89,7 @@ func (d *DAO) Init() {
 		AIK TEXT NOT NULL UNIQUE
 	);`
 	if _, err = d.db.Exec(createWorkerTableQuery); err != nil {
-		logger.Fatal("failed to create workers table: %w", err)
+		return fmt.Errorf("failed to create workers table: %w", err)
 	}
 
 	// Create TPM Certificates table
@@ -100,7 +101,7 @@ func (d *DAO) Init() {
 	);`
 
 	if _, err = d.db.Exec(createTPMCertTableQuery); err != nil {
-		logger.Fatal("failed to create TPM certificates table: %w", err)
+		return fmt.Errorf("failed to create TPM certificates table: %w", err)
 	}
 
 	// Create TPM Certificates table
@@ -112,18 +113,19 @@ func (d *DAO) Init() {
 	);`
 
 	if _, err = d.db.Exec(createTPMVendorTableQuery); err != nil {
-		logger.Fatal("failed to create TPM vendors table: %w", err)
+		return fmt.Errorf("failed to create TPM vendors table: %w", err)
 	}
 
 	err = d.initTPMVendors()
 	if err != nil {
-		logger.Fatal("failed to insert default TPM vendors: %v", err)
+		return fmt.Errorf("failed to insert default TPM vendors: %v", err)
 	}
 
 	err = d.initCACertificates()
 	if err != nil {
-		logger.Fatal("failed to insert known CA certificates: %v", err)
+		return fmt.Errorf("failed to insert known CA certificates: %v", err)
 	}
+	return nil
 }
 
 // TPMManufacturers TCG recognized TPM manufacturers
@@ -186,7 +188,7 @@ func (d *DAO) workerExistsByUUID(uuid string) (bool, error) {
 	return count > 0, nil
 }
 
-func (d *DAO) AddWorker(worker model.WorkerNode) error {
+func (d *DAO) AddWorker(worker *model.WorkerNode) error {
 	query := "INSERT INTO workers (UUID, name, AIK) VALUES (?, ?, ?);"
 	_, err := d.db.Exec(query, worker.UUID, worker.Name, worker.AIK)
 	return err

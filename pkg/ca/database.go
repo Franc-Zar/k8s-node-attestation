@@ -3,7 +3,6 @@ package ca
 import (
 	"database/sql"
 	"fmt"
-	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	_ "modernc.org/sqlite"
 )
 
@@ -12,23 +11,25 @@ type DAO struct {
 }
 
 // Close closes the database connection
-func (d *DAO) Close() {
+func (d *DAO) Close() error {
 	err := d.db.Close()
 	if err != nil {
-		logger.Fatal("Failed to close attestation database: %v", err)
+		return fmt.Errorf("failed to close Root CA database: %v", err)
 	}
+	return nil
 }
 
 // Open opens the database connection
-func (d *DAO) Open(dataSourceName string) {
+func (d *DAO) Open(dataSourceName string) error {
 	var err error
 	d.db, err = sql.Open("sqlite", dataSourceName)
 	if err != nil {
-		logger.Fatal("failed to open registrar db: %v", err)
+		return fmt.Errorf("failed to open Root CA database: %v", err)
 	}
+	return nil
 }
 
-func (d *DAO) Init() {
+func (d *DAO) Init() error {
 	var err error
 	// Table for issued certificates
 	createIssuedCertsTableQuery := `
@@ -39,7 +40,7 @@ func (d *DAO) Init() {
 		issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
 	if _, err = d.db.Exec(createIssuedCertsTableQuery); err != nil {
-		logger.Fatal("failed to create issued_certificates table: %w", err)
+		return fmt.Errorf("failed to create issued_certificates table: %w", err)
 	}
 
 	// Table for revoked certs / CRL entries
@@ -50,7 +51,7 @@ func (d *DAO) Init() {
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
 	if _, err = d.db.Exec(createCRLsTableQuery); err != nil {
-		logger.Fatal("failed to create crls table: %w", err)
+		return fmt.Errorf("failed to create crls table: %w", err)
 	}
 
 	// Table for root CA material
@@ -60,8 +61,9 @@ func (d *DAO) Init() {
 		ca_key_pem TEXT NOT NULL
 	);`
 	if _, err = d.db.Exec(createRootCATableQuery); err != nil {
-		logger.Fatal("failed to create root_ca table: %w", err)
+		return fmt.Errorf("failed to create root_ca table: %w", err)
 	}
+	return nil
 }
 
 // StoreRootCA stores the root CA material (certificate and private key)
@@ -128,7 +130,7 @@ func (d *DAO) GetAllIssuedCertificates() ([][]byte, error) {
 	defer func(rows *sql.Rows) {
 		err = rows.Close()
 		if err != nil {
-			logger.Fatal("failed to close issued_certificates table: %v", err)
+			return
 		}
 	}(rows)
 
