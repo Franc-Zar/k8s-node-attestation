@@ -11,7 +11,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250415093609-216b1a5a404d // indirect
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250415093609-216b1a5a404d // indirect
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250415100110-b093a141751d // indirect
 	github.com/google/go-attestation v0.5.1 // indirect
 	github.com/google/go-tpm v0.9.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect

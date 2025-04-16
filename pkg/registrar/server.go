@@ -35,14 +35,17 @@ func (s *Server) RegisterNode(node *model.WorkerNode) error {
 	if err != nil {
 		return fmt.Errorf("failed to open Registrar database: %w", err)
 	}
+
 	err = s.registrarDao.AddWorker(node)
 	if err != nil {
 		return fmt.Errorf("failed to register worker node: %w", err)
 	}
+
 	err = s.registrarDao.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close Registrar database: %w", err)
 	}
+
 	return nil
 }
 
@@ -55,6 +58,25 @@ func (s *Server) UnregisterNode(nodeUUID string) error {
 	err = s.registrarDao.DeleteWorker(nodeUUID)
 	if err != nil {
 		return fmt.Errorf("failed to unregister worker node: %w", err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return nil
+}
+
+func (s *Server) StoreTPMIntermediateCACertificate(certificate *model.TPMCACertificate) error {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	//cryptoUtils.a
+	err = s.registrarDao.AddTPMCaCertificate(certificate)
+	if err != nil {
+		return fmt.Errorf("failed to add TPM Vendor CA certificate: %w", err)
 	}
 
 	err = s.registrarDao.Close()

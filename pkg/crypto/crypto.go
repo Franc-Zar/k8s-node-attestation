@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
@@ -14,7 +15,8 @@ import (
 	"math/big"
 )
 
-var SANoid = []int{2, 5, 29, 17} // OID for subjectAltName
+var SANoid = asn1.ObjectIdentifier{2, 5, 29, 17} // OID for subjectAltName
+var EKCertificateOid = asn1.ObjectIdentifier{2, 23, 133, 8, 1}
 
 // EncodePublicKeyToPEM converts an RSA or ECDSA public key to PEM format.
 func EncodePublicKeyToPEM(pubKey crypto.PublicKey) ([]byte, error) {
@@ -120,8 +122,17 @@ func LoadCertificateFromPEM(pemCert []byte) (*x509.Certificate, error) {
 	return cert, nil
 }
 
-// handleTPMSubjectAltName processes the subjectAltName extension to mark it as handled
-func handleTPMSubjectAltName(cert *x509.Certificate, tpmVendors []model.TPMVendor) error {
+func HandleTPMEKCertificateEKU(cert *x509.Certificate) error {
+	for _, oid := range cert.UnknownExtKeyUsage {
+		if oid.Equal(EKCertificateOid) {
+			return nil
+		}
+	}
+	return fmt.Errorf("certificate does not contain EKU: tcg-kp-EKCertificate")
+}
+
+// HandleTPMSubjectAltName processes the subjectAltName extension to mark it as handled
+func HandleTPMSubjectAltName(cert *x509.Certificate, tpmVendors []model.TPMVendor) error {
 	for _, ext := range cert.Extensions {
 		if ext.Id.Equal(SANoid) {
 			subjectAltName, err := x509ext.ParseSubjectAltName(ext)
@@ -197,6 +208,43 @@ func VerifyTLSCertificateChain(cert, rootCACert *x509.Certificate) error {
 	return nil
 }
 
+func VerifyTPMIntermediateCACertificate(cert, rootCert *x509.Certificate) error {
+	// Must be a CA
+	if !cert.IsCA {
+		return fmt.Errorf("certificate is not a CA")
+	}
+
+	if cert.Subject.String() == rootCert.Subject.String() {
+		return fmt.Errorf("certificate is not intermediate CA")
+	}
+
+	// Optional: verify EKU if needed (e.g., for intermediate-specific EKU)
+	err := HandleTPMEKCertificateEKU(cert)
+	if err != nil {
+		return fmt.Errorf("certificate EK validation failed: %v", err)
+	}
+
+	// Setup roots
+	roots := x509.NewCertPool()
+	roots.AddCert(rootCert)
+
+	// Verify chain from intermediate to root
+	opts := x509.VerifyOptions{
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		Roots:     roots,
+	}
+
+	if _, err := cert.Verify(opts); err != nil {
+		return fmt.Errorf("intermediate CA verification failed: %v", err)
+	}
+
+	if cert.KeyUsage != (x509.KeyUsageCRLSign | x509.KeyUsageCertSign) {
+		return fmt.Errorf("intermediate CA verification does not support CRLSign or CertSign")
+	}
+
+	return nil
+}
+
 // VerifyEKCertificateChain verifies the provided certificate chain from PEM strings
 func VerifyEKCertificateChain(ekCert, intermediateCACert, rootCACert *x509.Certificate, tpmVendors []model.TPMVendor) error {
 	roots := x509.NewCertPool()
@@ -211,12 +259,21 @@ func VerifyEKCertificateChain(ekCert, intermediateCACert, rootCACert *x509.Certi
 		Intermediates: intermediates,
 	}
 
-	err := handleTPMSubjectAltName(ekCert, tpmVendors)
+	err := HandleTPMSubjectAltName(ekCert, tpmVendors)
 	if err != nil {
 		return fmt.Errorf("EK Certificate verification failed: %v", err)
 	}
 
-	if _, err := ekCert.Verify(opts); err != nil {
+	if ekCert.KeyUsage != x509.KeyUsageKeyEncipherment {
+		return fmt.Errorf("EK certificate key usage does not include only KeyEncipherment")
+	}
+
+	err = HandleTPMEKCertificateEKU(ekCert)
+	if err != nil {
+		return fmt.Errorf("EK Certificate verification failed: %v", err)
+	}
+
+	if _, err = ekCert.Verify(opts); err != nil {
 		return fmt.Errorf("EK Certificate verification failed: %v", err)
 	}
 	return nil
@@ -234,7 +291,7 @@ func VerifyTPMSignature(pubKey crypto.PublicKey, message []byte, signature tpmut
 		}
 		return nil
 	case *ecdsa.PublicKey:
-		r, s := parseSignature(signature)
+		r, s := ParseSignature(signature)
 		if r == nil || s == nil {
 			return fmt.Errorf("invalid signature format")
 		}
@@ -260,7 +317,7 @@ func VerifySignature(publicKey crypto.PublicKey, message, signature []byte) erro
 		}
 		return nil
 	case *ecdsa.PublicKey:
-		r, s := parseSignature(signature)
+		r, s := ParseSignature(signature)
 		if r == nil || s == nil {
 			return fmt.Errorf("invalid signature format")
 		}
@@ -274,8 +331,8 @@ func VerifySignature(publicKey crypto.PublicKey, message, signature []byte) erro
 	}
 }
 
-// Helper function to parse the signature into r and s values for ECDSA
-func parseSignature(sig []byte) (*big.Int, *big.Int) {
+// ParseSignature Helper function to parse the signature into r and s values for ECDSA
+func ParseSignature(sig []byte) (*big.Int, *big.Int) {
 	if len(sig) < 64 {
 		return nil, nil
 	}

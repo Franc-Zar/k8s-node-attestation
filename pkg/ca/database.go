@@ -43,7 +43,7 @@ func (d *DAO) Init() error {
 		return fmt.Errorf("failed to create issued_certificates table: %w", err)
 	}
 
-	// Table for revoked certs / CRL entries
+	// Table for revoked test-data / CRL entries
 	createCRLsTableQuery := `
 	CREATE TABLE IF NOT EXISTS crls (
 		cert_serial INTEGER PRIMARY KEY,
