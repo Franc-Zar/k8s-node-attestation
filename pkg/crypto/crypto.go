@@ -13,6 +13,8 @@ import (
 	x509ext "github.com/google/go-attestation/x509"
 	"github.com/google/go-tpm/tpmutil"
 	"math/big"
+	"strings"
+	"time"
 )
 
 var SANoid = asn1.ObjectIdentifier{2, 5, 29, 17} // OID for subjectAltName
@@ -208,8 +210,48 @@ func VerifyTLSCertificateChain(cert, rootCACert *x509.Certificate) error {
 	return nil
 }
 
+func VerifyTPMRootCACertificate(rootCert *x509.Certificate, tpmVendors []model.TPMVendor) error {
+	now := time.Now()
+	if now.Before(rootCert.NotBefore) || now.After(rootCert.NotAfter) {
+		return fmt.Errorf("certificate is not currently valid")
+	}
+
+	if !rootCert.IsCA {
+		return fmt.Errorf("certificate is not a CA")
+	}
+
+	isSubjectValidVendor := false
+	for _, tpmVendor := range tpmVendors {
+		isSubjectValidVendor = strings.Contains(rootCert.Subject.String(), tpmVendor.Name)
+		if isSubjectValidVendor {
+			break
+		}
+	}
+	if !isSubjectValidVendor {
+		return fmt.Errorf("certificate is not a CA for a valid TPM vendor")
+	}
+
+	if rootCert.MaxPathLenZero && rootCert.MaxPathLen != 0 {
+		return fmt.Errorf("invalid path length constraints for CA")
+	}
+
+	if rootCert.KeyUsage != (x509.KeyUsageCRLSign | x509.KeyUsageCertSign) {
+		return fmt.Errorf("intermediate CA verification does not support CRLSign or CertSign")
+	}
+
+	err := rootCert.CheckSignatureFrom(rootCert)
+	if err != nil {
+		return fmt.Errorf("certificate signature verification failed: %v", err)
+	}
+	return nil
+}
+
 func VerifyTPMIntermediateCACertificate(intermediateCert, rootCert *x509.Certificate) error {
-	// Must be a CA
+	now := time.Now()
+	if now.Before(rootCert.NotBefore) || now.After(rootCert.NotAfter) {
+		return fmt.Errorf("certificate is not currently valid")
+	}
+
 	if !intermediateCert.IsCA {
 		return fmt.Errorf("certificate is not a CA")
 	}

@@ -27,8 +27,7 @@ type TPMCACertificate struct {
 }
 
 type TPMVendor struct {
-	Id               string `json:"Id,omitempty"`
-	CommonName       string `json:"commonName"`
-	OrganizationName string `json:"organizationName"`
-	TCGIdentifier    string `json:"TCGIdentifier"`
+	Id            string `json:"Id,omitempty"`
+	CommonName    string `json:"commonName"`
+	TCGIdentifier string `json:"TCGIdentifier"`
 }
