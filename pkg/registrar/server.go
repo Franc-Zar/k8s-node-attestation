@@ -2,6 +2,7 @@ package registrar
 
 import (
 	"fmt"
+	cryptoUtils "github.com/franc-zar/k8s-node-attestation/pkg/crypto"
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 )
 
@@ -67,14 +68,33 @@ func (s *Server) UnregisterNode(nodeUUID string) error {
 	return nil
 }
 
-func (s *Server) StoreTPMIntermediateCACertificate(certificate *model.TPMCACertificate) error {
+func (s *Server) StoreTPMIntermediateCACertificate(tpmCaCertificate *model.TPMCACertificate) error {
 	err := s.registrarDao.Open(DatabaseName)
 	if err != nil {
 		return fmt.Errorf("failed to open Registrar database: %w", err)
 	}
 
-	//cryptoUtils.a
-	err = s.registrarDao.AddTPMCaCertificate(certificate)
+	cert, err := cryptoUtils.LoadCertificateFromPEM([]byte(tpmCaCertificate.PEMCertificate))
+	if err != nil {
+		return fmt.Errorf("failed to load certificate from PEM: %w", err)
+	}
+
+	rootCaCertificate, err := s.registrarDao.GetTPMCaCertificate(cert.Issuer.CommonName)
+	if err != nil {
+		return fmt.Errorf("failed to get root CA certificate: %w", err)
+	}
+
+	rootCert, err := cryptoUtils.LoadCertificateFromPEM([]byte(rootCaCertificate.PEMCertificate))
+	if err != nil {
+		return fmt.Errorf("failed to load root certificate from PEM: %w", err)
+	}
+
+	err = cryptoUtils.VerifyTPMIntermediateCACertificate(cert, rootCert)
+	if err != nil {
+		return fmt.Errorf("failed to verify intermediate certificate: %w", err)
+	}
+
+	err = s.registrarDao.AddTPMCaCertificate(tpmCaCertificate)
 	if err != nil {
 		return fmt.Errorf("failed to add TPM Vendor CA certificate: %w", err)
 	}
@@ -82,6 +102,15 @@ func (s *Server) StoreTPMIntermediateCACertificate(certificate *model.TPMCACerti
 	err = s.registrarDao.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Server) StoreTPMRootCACertificate(tpmRootCACertificate *model.TPMCACertificate) error {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return fmt.Errorf("failed to open Registrar database: %w", err)
 	}
 	return nil
 }

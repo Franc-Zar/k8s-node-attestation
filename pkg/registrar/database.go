@@ -262,3 +262,44 @@ func (d *DAO) GetAllTPMCaCertificates() ([]model.TPMCACertificate, error) {
 
 	return certs, nil
 }
+
+func (d *DAO) GetTPMCaCertificate(commonName string) (*model.TPMCACertificate, error) {
+	var cert model.TPMCACertificate
+	query := "SELECT * FROM tpm_ca_certificates WHERE commonName = ?;"
+	err := d.db.QueryRow(query, commonName).Scan(&cert.CertificateId, &cert.CommonName, &cert.PEMCertificate)
+	if err != nil {
+		return nil, err
+	}
+	return &cert, nil
+}
+
+func (d *DAO) GetAllTPMVendors() ([]model.TPMVendor, error) {
+	query := "SELECT * FROM tpm_vendors;"
+	rows, err := d.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	var tpmVendors []model.TPMVendor
+	for rows.Next() {
+		var vendor model.TPMVendor
+		err = rows.Scan(&vendor.VendorId, &vendor.Name, &vendor.TCGIdentifier)
+		if err != nil {
+			return nil, err
+		}
+		tpmVendors = append(tpmVendors, vendor)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return tpmVendors, nil
+}
+
+func (d *DAO) GetTPMVendorByTCGId(tcgIdentifier string) (*model.TPMVendor, error) {
+	var tpmVendor model.TPMVendor
+	query := "SELECT * FROM tpm_vendors WHERE TCGIdentifier = ?;"
+	err := d.db.QueryRow(query, tcgIdentifier).Scan(&tpmVendor.VendorId, &tpmVendor.TCGIdentifier, &tpmVendor.Name)
+	if err != nil {
+		return nil, err
+	}
+	return &tpmVendor, err
+}

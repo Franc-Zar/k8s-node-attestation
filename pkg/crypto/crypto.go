@@ -208,18 +208,18 @@ func VerifyTLSCertificateChain(cert, rootCACert *x509.Certificate) error {
 	return nil
 }
 
-func VerifyTPMIntermediateCACertificate(cert, rootCert *x509.Certificate) error {
+func VerifyTPMIntermediateCACertificate(intermediateCert, rootCert *x509.Certificate) error {
 	// Must be a CA
-	if !cert.IsCA {
+	if !intermediateCert.IsCA {
 		return fmt.Errorf("certificate is not a CA")
 	}
 
-	if cert.Subject.String() == rootCert.Subject.String() {
+	if intermediateCert.Subject.String() == rootCert.Subject.String() {
 		return fmt.Errorf("certificate is not intermediate CA")
 	}
 
 	// Optional: verify EKU if needed (e.g., for intermediate-specific EKU)
-	err := HandleTPMEKCertificateEKU(cert)
+	err := HandleTPMEKCertificateEKU(intermediateCert)
 	if err != nil {
 		return fmt.Errorf("certificate EK validation failed: %v", err)
 	}
@@ -234,11 +234,11 @@ func VerifyTPMIntermediateCACertificate(cert, rootCert *x509.Certificate) error 
 		Roots:     roots,
 	}
 
-	if _, err := cert.Verify(opts); err != nil {
+	if _, err := intermediateCert.Verify(opts); err != nil {
 		return fmt.Errorf("intermediate CA verification failed: %v", err)
 	}
 
-	if cert.KeyUsage != (x509.KeyUsageCRLSign | x509.KeyUsageCertSign) {
+	if intermediateCert.KeyUsage != (x509.KeyUsageCRLSign | x509.KeyUsageCertSign) {
 		return fmt.Errorf("intermediate CA verification does not support CRLSign or CertSign")
 	}
 
