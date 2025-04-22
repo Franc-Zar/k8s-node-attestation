@@ -70,9 +70,9 @@ func (d *DAO) initTPMVendors() error {
 
 	// Insert vendors into the database
 	for _, vendor := range getKnownTPMManufacturers() {
-		_, err := query.Exec(vendor.Name, vendor.TCGIdentifier)
+		_, err := query.Exec(vendor.CommonName, vendor.TCGIdentifier)
 		if err != nil {
-			return fmt.Errorf("error inserting TPM vendor %s: %v", vendor.Name, err)
+			return fmt.Errorf("error inserting TPM vendor %s: %v", vendor.CommonName, err)
 		}
 	}
 	return nil
@@ -132,30 +132,30 @@ func (d *DAO) Init() error {
 // https://trustedcomputinggroup.org/resource/vendor-id-registry/
 func getKnownTPMManufacturers() []model.TPMVendor {
 	return []model.TPMVendor{
-		{Name: "AMD", TCGIdentifier: "id:414D4400"},
-		{Name: "Atmel", TCGIdentifier: "id:41544D4C"},
-		{Name: "Broadcom", TCGIdentifier: "id:4252434D"},
-		{Name: "Cisco", TCGIdentifier: "id:4353434F"},
-		{Name: "Flyslice Technologies", TCGIdentifier: "id:464C5953"},
-		{Name: "HPE", TCGIdentifier: "id:48504500"},
-		{Name: "Huawei", TCGIdentifier: "id:48495349"},
-		{Name: "IBM", TCGIdentifier: "id:49424D00"},
-		{Name: "Infineon", TCGIdentifier: "id:49465800"},
-		{Name: "Intel", TCGIdentifier: "id:494E5443"},
-		{Name: "Lenovo", TCGIdentifier: "id:4C454E00"},
-		{Name: "Microsoft", TCGIdentifier: "id:4D534654"},
-		{Name: "National Semiconductor", TCGIdentifier: "id:4E534D20"},
-		{Name: "Nationz", TCGIdentifier: "id:4E545A00"},
-		{Name: "Nuvoton Technology", TCGIdentifier: "id:4E544300"},
-		{Name: "Qualcomm", TCGIdentifier: "id:51434F4D"},
-		{Name: "SMSC", TCGIdentifier: "id:534D5343"},
-		{Name: "ST Microelectronics", TCGIdentifier: "id:53544D20"},
-		{Name: "Samsung", TCGIdentifier: "id:534D534E"},
-		{Name: "Sinosun", TCGIdentifier: "id:534E5300"},
-		{Name: "Texas Instruments", TCGIdentifier: "id:54584E00"},
-		{Name: "Winbond", TCGIdentifier: "id:57454300"},
-		{Name: "Fuzhouk Rockchip", TCGIdentifier: "id:524F4343"},
-		{Name: "Google", TCGIdentifier: "id:474F4F47"},
+		{CommonName: "AMD", TCGIdentifier: "id:414D4400"},
+		{CommonName: "Atmel", TCGIdentifier: "id:41544D4C"},
+		{CommonName: "Broadcom", TCGIdentifier: "id:4252434D"},
+		{CommonName: "Cisco", TCGIdentifier: "id:4353434F"},
+		{CommonName: "Flyslice Technologies", TCGIdentifier: "id:464C5953"},
+		{CommonName: "HPE", TCGIdentifier: "id:48504500"},
+		{CommonName: "Huawei", TCGIdentifier: "id:48495349"},
+		{CommonName: "IBM", TCGIdentifier: "id:49424D00"},
+		{CommonName: "Infineon", TCGIdentifier: "id:49465800"},
+		{CommonName: "Intel", TCGIdentifier: "id:494E5443"},
+		{CommonName: "Lenovo", TCGIdentifier: "id:4C454E00"},
+		{CommonName: "Microsoft", TCGIdentifier: "id:4D534654"},
+		{CommonName: "National Semiconductor", TCGIdentifier: "id:4E534D20"},
+		{CommonName: "Nationz", TCGIdentifier: "id:4E545A00"},
+		{CommonName: "Nuvoton Technology", TCGIdentifier: "id:4E544300"},
+		{CommonName: "Qualcomm", TCGIdentifier: "id:51434F4D"},
+		{CommonName: "SMSC", TCGIdentifier: "id:534D5343"},
+		{CommonName: "ST Microelectronics", TCGIdentifier: "id:53544D20"},
+		{CommonName: "Samsung", TCGIdentifier: "id:534D534E"},
+		{CommonName: "Sinosun", TCGIdentifier: "id:534E5300"},
+		{CommonName: "Texas Instruments", TCGIdentifier: "id:54584E00"},
+		{CommonName: "Winbond", TCGIdentifier: "id:57454300"},
+		{CommonName: "Fuzhouk Rockchip", TCGIdentifier: "id:524F4343"},
+		{CommonName: "Google", TCGIdentifier: "id:474F4F47"},
 	}
 }
 
@@ -232,6 +232,16 @@ func (d *DAO) DeleteTPMCaCertificate(commonName string) error {
 	return err
 }
 
+func (d *DAO) GetAllWorkers() ([]model.WorkerNode, error) {
+	var workers []model.WorkerNode
+	query := "SELECT * FROM workers ORDER BY name;"
+	err := d.db.QueryRow(query).Scan(&workers)
+	if err != nil {
+		return nil, err
+	}
+	return workers, nil
+}
+
 func (d *DAO) GetAllTPMCaCertificates() ([]model.TPMCACertificate, error) {
 	query := "SELECT * FROM tpm_ca_certificates;"
 	rows, err := d.db.Query(query)
@@ -249,7 +259,7 @@ func (d *DAO) GetAllTPMCaCertificates() ([]model.TPMCACertificate, error) {
 	var certs []model.TPMCACertificate
 	for rows.Next() {
 		var cert model.TPMCACertificate
-		err = rows.Scan(&cert.CertificateId, &cert.CommonName, &cert.PEMCertificate)
+		err = rows.Scan(&cert.Id, &cert.CommonName, &cert.PEMCertificate)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +276,7 @@ func (d *DAO) GetAllTPMCaCertificates() ([]model.TPMCACertificate, error) {
 func (d *DAO) GetTPMCaCertificate(commonName string) (*model.TPMCACertificate, error) {
 	var cert model.TPMCACertificate
 	query := "SELECT * FROM tpm_ca_certificates WHERE commonName = ?;"
-	err := d.db.QueryRow(query, commonName).Scan(&cert.CertificateId, &cert.CommonName, &cert.PEMCertificate)
+	err := d.db.QueryRow(query, commonName).Scan(&cert.Id, &cert.CommonName, &cert.PEMCertificate)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +292,7 @@ func (d *DAO) GetAllTPMVendors() ([]model.TPMVendor, error) {
 	var tpmVendors []model.TPMVendor
 	for rows.Next() {
 		var vendor model.TPMVendor
-		err = rows.Scan(&vendor.VendorId, &vendor.Name, &vendor.TCGIdentifier)
+		err = rows.Scan(&vendor.Id, &vendor.CommonName, &vendor.TCGIdentifier)
 		if err != nil {
 			return nil, err
 		}
@@ -297,7 +307,7 @@ func (d *DAO) GetAllTPMVendors() ([]model.TPMVendor, error) {
 func (d *DAO) GetTPMVendorByTCGId(tcgIdentifier string) (*model.TPMVendor, error) {
 	var tpmVendor model.TPMVendor
 	query := "SELECT * FROM tpm_vendors WHERE TCGIdentifier = ?;"
-	err := d.db.QueryRow(query, tcgIdentifier).Scan(&tpmVendor.VendorId, &tpmVendor.TCGIdentifier, &tpmVendor.Name)
+	err := d.db.QueryRow(query, tcgIdentifier).Scan(&tpmVendor.Id, &tpmVendor.CommonName, &tpmVendor.TCGIdentifier)
 	if err != nil {
 		return nil, err
 	}

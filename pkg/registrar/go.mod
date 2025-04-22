@@ -3,8 +3,8 @@ module github.com/franc-zar/k8s-node-attestation/pkg/registrar
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250416144824-b16888c9e0bd
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250416144824-b16888c9e0bd
+	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250421204033-7a57c9ad7c9e
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250421204033-7a57c9ad7c9e
 	modernc.org/sqlite v1.37.0
 )
 

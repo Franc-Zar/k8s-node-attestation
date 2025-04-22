@@ -31,3 +31,9 @@ type TPMVendor struct {
 	CommonName    string `json:"commonName"`
 	TCGIdentifier string `json:"TCGIdentifier"`
 }
+
+type Certificate struct {
+	Id             string `json:"id,omitempty"`
+	CommonName     string `json:"commonName"`
+	PEMCertificate string `json:"PEMCertificate"`
+}

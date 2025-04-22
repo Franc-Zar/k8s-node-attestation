@@ -7,28 +7,177 @@ import (
 )
 
 const DatabaseName = "attestation-registrar.db"
+const HelpString = ""
 
 type Server struct {
 	registrarDao DAO
 }
 
-func (s *Server) Init() error {
+func New() (*Server, error) {
+	newServer := &Server{}
+	err := newServer.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	err = newServer.registrarDao.Init()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Registrar database: %w", err)
+	}
+
+	err = newServer.registrarDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return newServer, nil
+}
+
+func (s *Server) GetWorkerByUUID(UUID string) (*model.WorkerNode, error) {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	workerNode, err := s.registrarDao.GetWorkerByUUID(UUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get worker by UUID %s: %w", UUID, err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return workerNode, nil
+}
+
+func (s *Server) Help() string {
+	return HelpString
+}
+
+func (s *Server) GetAllWorkers() ([]model.WorkerNode, error) {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	workers, err := s.registrarDao.GetAllWorkers()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all workers: %w", err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return workers, nil
+}
+
+func (s *Server) GetWorkerByName(name string) (*model.WorkerNode, error) {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	workerNode, err := s.registrarDao.GetWorkerByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get worker by name %s: %w", name, err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return workerNode, nil
+}
+
+func (s *Server) GetAllTPMCaCertificates() ([]model.TPMCACertificate, error) {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	tpmCaCertificates, err := s.registrarDao.GetAllTPMCaCertificates()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all TPM certificates: %w", err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return tpmCaCertificates, nil
+}
+
+func (s *Server) DeleteTPMCaCertificate(commonName string) error {
 	err := s.registrarDao.Open(DatabaseName)
 	if err != nil {
 		return fmt.Errorf("failed to open Registrar database: %w", err)
 	}
 
-	err = s.registrarDao.Init()
+	err = s.registrarDao.DeleteTPMCaCertificate(commonName)
 	if err != nil {
-		return fmt.Errorf("failed to initialize Registrar database: %w", err)
+		return fmt.Errorf("failed to delete TPM certificate: %w", err)
 	}
 
 	err = s.registrarDao.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close Registrar database: %w", err)
 	}
-
 	return nil
+}
+
+func (s *Server) GetTPMVendors() ([]model.TPMVendor, error) {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	tpmVendors, err := s.registrarDao.GetAllTPMVendors()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve TPM Vendors: %w", err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return tpmVendors, nil
+}
+
+func (s *Server) GetTPMVendorByTCGId(tcgIdentifier string) (*model.TPMVendor, error) {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	tpmVendor, err := s.registrarDao.GetTPMVendorByTCGId(tcgIdentifier)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve TPM Vendors: %w", err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return tpmVendor, nil
+}
+
+func (s *Server) GetTPMCaCertificate(commonName string) (*model.TPMCACertificate, error) {
+	err := s.registrarDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	certificate, err := s.registrarDao.GetTPMCaCertificate(commonName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve TPM CA Certificate: %w", err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Registrar database: %w", err)
+	}
+	return certificate, nil
 }
 
 func (s *Server) RegisterNode(node *model.WorkerNode) error {
@@ -103,7 +252,6 @@ func (s *Server) StoreTPMIntermediateCACertificate(tpmCaCertificate *model.TPMCA
 	if err != nil {
 		return fmt.Errorf("failed to close Registrar database: %w", err)
 	}
-
 	return nil
 }
 
@@ -111,6 +259,26 @@ func (s *Server) StoreTPMRootCACertificate(tpmRootCACertificate *model.TPMCACert
 	err := s.registrarDao.Open(DatabaseName)
 	if err != nil {
 		return fmt.Errorf("failed to open Registrar database: %w", err)
+	}
+
+	rootCert, err := cryptoUtils.LoadCertificateFromPEM([]byte(tpmRootCACertificate.PEMCertificate))
+	if err != nil {
+		return fmt.Errorf("failed to load root certificate from PEM: %w", err)
+	}
+
+	tpmVendors, err := s.registrarDao.GetAllTPMVendors()
+	if err != nil {
+		return fmt.Errorf("failed to get all TPM Vendors: %w", err)
+	}
+
+	err = cryptoUtils.VerifyTPMRootCACertificate(rootCert, tpmVendors)
+	if err != nil {
+		return fmt.Errorf("failed to verify root CA certificate: %w", err)
+	}
+
+	err = s.registrarDao.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close Registrar database: %w", err)
 	}
 	return nil
 }
