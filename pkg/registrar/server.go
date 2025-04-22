@@ -7,7 +7,53 @@ import (
 )
 
 const DatabaseName = "attestation-registrar.db"
-const HelpString = ""
+const HelpString = `Attestation Registrar is a plugin that manages certificates and node registration for the attestation process in a Kubernetes cluster.
+
+Usage:
+  attestation-registrar <command> --flags [arguments]
+
+Commands:
+  help
+      Show this help message
+
+  register-node
+      --worker, -w <node-json>
+          Register a worker node in the database
+
+  unregister-node
+      --uuid <node-uuid>
+          Remove a worker node from the database using its UUID
+
+  get-worker
+      --uuid <uuid>
+          Retrieve a worker node by UUID
+      --name <name>
+          Retrieve a worker node by name
+      --all
+          List all registered worker nodes
+
+  get-vendor
+      --tcg-id <id>
+          Retrieve a TPM vendor by TCG identifier
+	  --all      
+          List all TPM vendors
+
+  store-vendor-cert
+      --intermediate <pem-certificate-base64>
+          Store and verify a TPM Intermediate CA certificate
+
+      --root <pem-certificate-base64>
+          Store a TPM Root CA certificate after verification
+
+  get-vendor-cert
+      --common-name, -cn <common-name>
+          Retrieve a TPM CA certificate by Common Name
+      --all    
+          List all TPM CA certificates
+
+  delete-vendor-cert
+      --cn <common-name>
+          Delete a TPM CA certificate by Common Name`
 
 type Server struct {
 	registrarDao DAO
@@ -217,13 +263,13 @@ func (s *Server) UnregisterNode(nodeUUID string) error {
 	return nil
 }
 
-func (s *Server) StoreTPMIntermediateCACertificate(tpmCaCertificate *model.TPMCACertificate) error {
+func (s *Server) StoreTPMIntermediateCACertificate(tpmCaCertificatePEM []byte) error {
 	err := s.registrarDao.Open(DatabaseName)
 	if err != nil {
 		return fmt.Errorf("failed to open Registrar database: %w", err)
 	}
 
-	cert, err := cryptoUtils.LoadCertificateFromPEM([]byte(tpmCaCertificate.PEMCertificate))
+	cert, err := cryptoUtils.LoadCertificateFromPEM(tpmCaCertificatePEM)
 	if err != nil {
 		return fmt.Errorf("failed to load certificate from PEM: %w", err)
 	}
@@ -243,7 +289,13 @@ func (s *Server) StoreTPMIntermediateCACertificate(tpmCaCertificate *model.TPMCA
 		return fmt.Errorf("failed to verify intermediate certificate: %w", err)
 	}
 
-	err = s.registrarDao.AddTPMCaCertificate(tpmCaCertificate)
+	certificate := &model.TPMCACertificate{
+		Id:             rootCert.SerialNumber.Int64(),
+		CommonName:     rootCert.Subject.CommonName,
+		PEMCertificate: string(tpmCaCertificatePEM),
+	}
+
+	err = s.registrarDao.AddTPMCaCertificate(certificate)
 	if err != nil {
 		return fmt.Errorf("failed to add TPM Vendor CA certificate: %w", err)
 	}
@@ -255,13 +307,13 @@ func (s *Server) StoreTPMIntermediateCACertificate(tpmCaCertificate *model.TPMCA
 	return nil
 }
 
-func (s *Server) StoreTPMRootCACertificate(tpmRootCACertificate *model.TPMCACertificate) error {
+func (s *Server) StoreTPMRootCACertificate(tpmRootCACertificatePEM []byte) error {
 	err := s.registrarDao.Open(DatabaseName)
 	if err != nil {
 		return fmt.Errorf("failed to open Registrar database: %w", err)
 	}
 
-	rootCert, err := cryptoUtils.LoadCertificateFromPEM([]byte(tpmRootCACertificate.PEMCertificate))
+	rootCert, err := cryptoUtils.LoadCertificateFromPEM(tpmRootCACertificatePEM)
 	if err != nil {
 		return fmt.Errorf("failed to load root certificate from PEM: %w", err)
 	}
@@ -274,6 +326,17 @@ func (s *Server) StoreTPMRootCACertificate(tpmRootCACertificate *model.TPMCACert
 	err = cryptoUtils.VerifyTPMRootCACertificate(rootCert, tpmVendors)
 	if err != nil {
 		return fmt.Errorf("failed to verify root CA certificate: %w", err)
+	}
+
+	certificate := &model.TPMCACertificate{
+		Id:             rootCert.SerialNumber.Int64(),
+		CommonName:     rootCert.Subject.CommonName,
+		PEMCertificate: string(tpmRootCACertificatePEM),
+	}
+
+	err = s.registrarDao.AddTPMCaCertificate(certificate)
+	if err != nil {
+		return fmt.Errorf("failed to add TPM Vendor CA certificate: %w", err)
 	}
 
 	err = s.registrarDao.Close()

@@ -3,9 +3,10 @@ package ca
 import (
 	"encoding/base64"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
+	"strconv"
 )
 
-func RootCaCLI(args []string) {
+func CLI(args []string) {
 	if len(args) < 2 {
 		logger.CommandError("Usage: attestation-ca <command> [flag]\nattestation-ca help for more information")
 	}
@@ -32,7 +33,7 @@ func RootCaCLI(args []string) {
 	case InitCommandName:
 		// Ensure that the setup flag is provided
 		if len(args) < 3 {
-			logger.CommandError("Usage: attestation-ca init --root-key-alg ECDSA | RSA")
+			logger.CommandError("Usage: attestation-ca %s --root-key-alg ECDSA | RSA", InitCommandName)
 		}
 		// Setup Root CA with the specified key algorithm
 		flag := args[2]
@@ -40,7 +41,7 @@ func RootCaCLI(args []string) {
 
 		case "--root-key-alg":
 			if len(args) < 4 {
-				logger.CommandError("Usage: kubectl attestation ca setup --root-key-alg ECDSA | RSA")
+				logger.CommandError("Usage: kubectl attestation-ca %s --root-key-alg ECDSA | RSA", InitCommandName)
 			}
 			keyAlg := args[3]
 			switch keyAlg {
@@ -69,7 +70,7 @@ func RootCaCLI(args []string) {
 
 	case IssueCertificateCommandName:
 		if len(args) < 4 {
-			logger.CommandError("Usage: attestation-ca issue-certificate --csr <csr-base64>")
+			logger.CommandError("Usage: attestation-ca %s --csr <csr-base64>", IssueCertificateCommandName)
 		}
 		err := attestationCA.SetCA()
 		if err != nil {
@@ -98,7 +99,7 @@ func RootCaCLI(args []string) {
 	case RevokeCertificateCommandName:
 		// Ensure that the revoke certificate flags are provided
 		if len(args) < 3 {
-			logger.CommandError("Usage: attestation-ca revoke-certificate --cert, -c <pem-certificate-base64> | --all, -a")
+			logger.CommandError("Usage: attestation-ca %s --cert, -c <pem-certificate-base64> | --all, -a", RevokeCertificateCommandName)
 		}
 
 		err := attestationCA.SetCA()
@@ -111,7 +112,7 @@ func RootCaCLI(args []string) {
 
 		case "--cert", "-c":
 			if len(args) < 4 {
-				logger.CommandError("Usage: attestation-ca revoke-certificate --cert, -c <pem-certificate-base64>")
+				logger.CommandError("Usage: attestation-ca %s --cert, -c <pem-certificate-base64>", RevokeCertificateCommandName)
 			}
 			flagArg := []byte(args[3])
 
@@ -128,13 +129,13 @@ func RootCaCLI(args []string) {
 			}
 
 		default:
-			logger.CommandError("Unknown flag for revoke-certificate command: %s", flag)
+			logger.CommandError("Unknown flag for %s command: %s", RevokeCertificateCommandName, flag)
 		}
 
 	case GetCertificateCommandName:
 		// Ensure that the get certificate flag is provided
 		if len(args) < 3 {
-			logger.CommandError("Usage: kubectl attestation-ca get-certificate --common-name, -cn <common-name> | --all")
+			logger.CommandError("Usage: kubectl attestation-ca %s --common-name, -cn <common-name> | --all", GetCertificateCommandName)
 		}
 		err := attestationCA.SetCA()
 		if err != nil {
@@ -144,13 +145,23 @@ func RootCaCLI(args []string) {
 		switch flag {
 		case "--common-name", "-cn":
 			if len(args) < 4 {
-				logger.CommandError("Usage: kubectl attestation-ca get-certificate --common-name, -cn <common-name>")
+				logger.CommandError("Usage: kubectl attestation-ca %s --common-name, -cn <common-name>", GetCertificateCommandName)
 			}
 			commonName := args[3]
 			// Retrieve a certificate by Common Name
 			certificate, err := attestationCA.GetCertificateByCommonName(commonName)
 			if err != nil {
 				logger.CommandError("Failed to get certificate by common name '%s': %v", commonName, err)
+			}
+			logger.CommandSuccess("%s", certificate)
+		case "--serial-number", "-sn":
+			if len(args) < 4 {
+				logger.CommandError("Usage: kubectl attestation-ca %s --serial-number, -sn <serial-number>", GetCertificateCommandName)
+			}
+			serialNumber, err := strconv.ParseInt(args[3], 10, 64)
+			certificate, err := attestationCA.GetCertificateBySerialNumber(serialNumber)
+			if err != nil {
+				logger.CommandError("Failed to get certificate by serial number '%s': %v", serialNumber, err)
 			}
 			logger.CommandSuccess("%s", certificate)
 
@@ -162,13 +173,13 @@ func RootCaCLI(args []string) {
 			logger.CommandSuccess("%s", certificate)
 
 		default:
-			logger.CommandError("Unknown flag for get-certificate command: %s", flag)
+			logger.CommandError("Unknown flag for %s command: %s", GetCertificateCommandName, flag)
 		}
 
 	case GetCRLCommandName:
-		err := attestationCA.SetCA()
+		err = attestationCA.SetCA()
 		if err != nil {
-			logger.CommandError(err.Error())
+			logger.CommandError("Failed to get CRL: %v", err)
 		}
 		// Retrieve the Certificate Revocation List (CRL)
 		latestCRL, err := attestationCA.GetLatestCRL()

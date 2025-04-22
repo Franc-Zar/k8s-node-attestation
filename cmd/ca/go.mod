@@ -3,15 +3,15 @@ module github.com/franc-zar/k8s-node-attestation/cmd/ca
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250415093609-216b1a5a404d
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250415093609-216b1a5a404d
+	github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250422132519-b6b2b1be70e6
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250422132519-b6b2b1be70e6
 )
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250415093609-216b1a5a404d // indirect
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250415100110-b093a141751d // indirect
+	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250422132519-b6b2b1be70e6 // indirect
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250422132519-b6b2b1be70e6 // indirect
 	github.com/google/go-attestation v0.5.1 // indirect
 	github.com/google/go-tpm v0.9.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -21,8 +21,8 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
-	modernc.org/libc v1.62.1 // indirect
+	modernc.org/libc v1.63.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
-	modernc.org/memory v1.9.1 // indirect
+	modernc.org/memory v1.10.0 // indirect
 	modernc.org/sqlite v1.37.0 // indirect
 )

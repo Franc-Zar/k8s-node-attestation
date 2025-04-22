@@ -52,6 +52,8 @@ Commands:
   get-certificate
       --common-name, -cn <common-name>
           Retrieve a certificate by Common Name
+      --serial-number, -sn <serial-number>
+          Retrieve a certificate by Serial Number
       --root
 		  Retrieve Root CA certificate
 
@@ -299,7 +301,7 @@ func (s *Server) RevokeCertificate(certPEM []byte) ([]byte, error) {
 	certSerial := certToRevoke.SerialNumber.Int64()
 
 	// Make sure it's an issued certificate
-	_, err = s.caDao.GetIssuedCertificate(certSerial)
+	_, err = s.caDao.GetIssuedCertificateBySerialNumber(certSerial)
 	if err != nil {
 		return nil, fmt.Errorf("certificate not found in issued store")
 	}
@@ -512,6 +514,24 @@ func (s *Server) GetCertificateByCommonName(commonName string) (*model.Certifica
 	cert, err := s.caDao.GetIssuedCertificateByCommonName(commonName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get certificate with CN: '%s': %v", commonName, err)
+	}
+
+	err = s.caDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Root CA database")
+	}
+	return cert, nil
+}
+
+func (s *Server) GetCertificateBySerialNumber(serialNumber int64) (*model.Certificate, error) {
+	err := s.caDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Root CA database")
+	}
+
+	cert, err := s.caDao.GetIssuedCertificateBySerialNumber(serialNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get certificate with CN: '%d': %v", serialNumber, err)
 	}
 
 	err = s.caDao.Close()

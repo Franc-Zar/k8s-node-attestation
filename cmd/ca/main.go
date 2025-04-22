@@ -6,5 +6,5 @@ import (
 )
 
 func main() {
-	ca.RootCaCLI(os.Args)
+	ca.CLI(os.Args)
 }

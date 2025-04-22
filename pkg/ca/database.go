@@ -111,7 +111,7 @@ func (d *DAO) StoreIssuedCertificate(certificate *model.Certificate) error {
 }
 
 // GetIssuedCertificate retrieves an issued certificate by serial number
-func (d *DAO) GetIssuedCertificate(serialNumber int64) (*model.Certificate, error) {
+func (d *DAO) GetIssuedCertificateBySerialNumber(serialNumber int64) (*model.Certificate, error) {
 	var certificate model.Certificate
 	err := d.db.QueryRow(`SELECT serial_number, common_name, certificate_pem FROM issued_certificates WHERE serial_number = ?`, serialNumber).Scan(&certificate.Id, &certificate.CommonName, &certificate.PEMCertificate)
 	if err != nil {
