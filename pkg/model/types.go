@@ -21,7 +21,7 @@ type AgentConfig struct {
 }
 
 type TPMCACertificate struct {
-	Id             string `json:"Id,omitempty"`
+	Id             int64  `json:"Id,omitempty"`
 	CommonName     string `json:"commonName"`
 	PEMCertificate string `json:"PEMCertificate"`
 }
@@ -33,7 +33,7 @@ type TPMVendor struct {
 }
 
 type Certificate struct {
-	Id             string `json:"id,omitempty"`
+	Id             int64  `json:"id,omitempty"`
 	CommonName     string `json:"commonName"`
 	PEMCertificate string `json:"PEMCertificate"`
 }

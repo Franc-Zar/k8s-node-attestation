@@ -3,6 +3,7 @@ package ca
 import (
 	"database/sql"
 	"fmt"
+	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	_ "modernc.org/sqlite"
 )
 
@@ -46,7 +47,7 @@ func (d *DAO) Init() error {
 	// Table for revoked test-data / CRL entries
 	createCRLsTableQuery := `
 	CREATE TABLE IF NOT EXISTS crls (
-		cert_serial INTEGER PRIMARY KEY,
+		serial_number INTEGER PRIMARY KEY,
 		crl_pem TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
@@ -57,6 +58,8 @@ func (d *DAO) Init() error {
 	// Table for root CA material
 	createRootCATableQuery := `
 	CREATE TABLE IF NOT EXISTS root_ca (
+	    serial_number INTEGER PRIMARY KEY,
+	    common_name TEXT NOT NULL,
 		ca_cert_pem TEXT NOT NULL,
 		ca_key_pem TEXT NOT NULL
 	);`
@@ -69,7 +72,7 @@ func (d *DAO) Init() error {
 // StoreRootCA stores the root CA material (certificate and private key)
 func (d *DAO) StoreRootCA(caCertPEM, caKeyPEM []byte) error {
 	_, err := d.db.Exec(`
-	INSERT INTO root_ca (ca_cert_pem, ca_key_pem)
+	INSERT INTO root_ca (serial_number, common_name, ca_cert_pem, ca_key_pem)
 	VALUES (?, ?)`, caCertPEM, caKeyPEM)
 	return err
 }
@@ -90,40 +93,40 @@ func (d *DAO) DeleteIssuedCertificate(serialNumber int64) error {
 }
 
 // StoreIssuedCertificate stores an issued certificate's serial number and PEM format
-func (d *DAO) StoreIssuedCertificate(serialNumber int64, commonName string, certPEM []byte) error {
+func (d *DAO) StoreIssuedCertificate(certificate *model.Certificate) error {
 	_, err := d.db.Exec(`
 	INSERT INTO issued_certificates (serial_number, common_name, certificate_pem)
-	VALUES (?, ?)`, serialNumber, commonName, certPEM)
+	VALUES (?, ?)`, certificate.Id, certificate.CommonName, certificate.PEMCertificate)
 	return err
 }
 
 // GetIssuedCertificate retrieves an issued certificate by serial number
-func (d *DAO) GetIssuedCertificate(serialNumber int64) ([]byte, error) {
-	var certPEM []byte
-	err := d.db.QueryRow(`SELECT certificate_pem FROM issued_certificates WHERE serial_number = ?`, serialNumber).Scan(&certPEM)
+func (d *DAO) GetIssuedCertificate(serialNumber int64) (*model.Certificate, error) {
+	var certificate model.Certificate
+	err := d.db.QueryRow(`SELECT serial_number, common_name, certificate_pem FROM issued_certificates WHERE serial_number = ?`, serialNumber).Scan(&certificate.Id, &certificate.CommonName, &certificate.PEMCertificate)
 	if err != nil {
 		return nil, err
 	}
-	return certPEM, nil
+	return &certificate, nil
 }
 
 // GetIssuedCertificateByCommonName retrieves an issued certificate by common name
-func (d *DAO) GetIssuedCertificateByCommonName(commonName string) ([]byte, error) {
-	var certPEM []byte
-	err := d.db.QueryRow(`SELECT certificate_pem FROM issued_certificates WHERE common_name = ?`, commonName).Scan(&certPEM)
+func (d *DAO) GetIssuedCertificateByCommonName(commonName string) (*model.Certificate, error) {
+	var certificate model.Certificate
+	err := d.db.QueryRow(`SELECT serial_number, common_name, certificate_pem FROM issued_certificates WHERE common_name = ?`, commonName).Scan(&certificate.Id, &certificate.CommonName, &certificate.PEMCertificate)
 	if err != nil {
 		return nil, err
 	}
-	return certPEM, nil
+	return &certificate, nil
 }
 
 // GetAllIssuedCertificates retrieves all issued certificates from the database.
-func (d *DAO) GetAllIssuedCertificates() ([][]byte, error) {
+func (d *DAO) GetAllIssuedCertificates() ([]model.Certificate, error) {
 	// Prepare to collect all certificates
-	var certs [][]byte
+	var certs []model.Certificate
 
 	// Query all issued certificates
-	rows, err := d.db.Query(`SELECT certificate_pem FROM issued_certificates`)
+	rows, err := d.db.Query(`SELECT serial_number, common_name, certificate_pem FROM issued_certificates`)
 	if err != nil {
 		return nil, err
 	}
@@ -136,11 +139,11 @@ func (d *DAO) GetAllIssuedCertificates() ([][]byte, error) {
 
 	// Iterate over the rows and collect each certificate
 	for rows.Next() {
-		var certPEM []byte
-		if err := rows.Scan(&certPEM); err != nil {
+		var certificate model.Certificate
+		if err = rows.Scan(&certificate.Id, &certificate.CommonName, &certificate.PEMCertificate); err != nil {
 			return nil, err
 		}
-		certs = append(certs, certPEM)
+		certs = append(certs, certificate)
 	}
 
 	// Check if any rows were found
@@ -201,7 +204,7 @@ func (d *DAO) EraseAllTables() error {
 // StoreCRL stores a PEM-encoded CRL using the associated certificate serial
 func (d *DAO) StoreCRL(serialNumber int64, crlPEM []byte) error {
 	_, err := d.db.Exec(`
-	INSERT INTO crls (cert_serial, crl_pem)
+	INSERT INTO crls (serial_number, crl_pem)
 	VALUES (?, ?)`, serialNumber, crlPEM)
 	return err
 }
@@ -210,7 +213,7 @@ func (d *DAO) StoreCRL(serialNumber int64, crlPEM []byte) error {
 func (d *DAO) GetCRL(serialNumber int64) ([]byte, error) {
 	var crlPEM []byte
 	err := d.db.QueryRow(`
-	SELECT crl_pem FROM crls WHERE cert_serial = ?`, serialNumber).Scan(&crlPEM)
+	SELECT crl_pem FROM crls WHERE serial_number = ?`, serialNumber).Scan(&crlPEM)
 	if err != nil {
 		return nil, err
 	}

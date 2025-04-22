@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	cryptoUtils "github.com/franc-zar/k8s-node-attestation/pkg/crypto"
+	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	"math"
 	"math/big"
 	"time"
@@ -497,12 +498,12 @@ func (s *Server) Reset() error {
 	return nil
 }
 
-func (s *Server) GetCertificateByCommonName(commonName string) ([]byte, error) {
+func (s *Server) GetCertificateByCommonName(commonName string) (*model.Certificate, error) {
 	err := s.caDao.Open(DatabaseName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open Root CA database")
 	}
-	certPEM, err := s.caDao.GetIssuedCertificateByCommonName(commonName)
+	cert, err := s.caDao.GetIssuedCertificateByCommonName(commonName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get certificate with CN: '%s': %v", commonName, err)
 	}
@@ -510,7 +511,7 @@ func (s *Server) GetCertificateByCommonName(commonName string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to close Root CA database")
 	}
-	return certPEM, nil
+	return cert, nil
 }
 
 func (s *Server) GetRootCACert() ([]byte, error) {
@@ -540,30 +541,30 @@ func generateSerialNumber() (int64, error) {
 }
 
 // signCSR signs a certificate signing request and returns a signed certificate in PEM format
-func (s *Server) signCSR(csrPEM []byte) (int64, string, []byte, error) {
+func (s *Server) signCSR(csrPEM []byte) (*model.Certificate, error) {
 	block, _ := pem.Decode(csrPEM)
 	if block == nil || block.Type != "CERTIFICATE REQUEST" {
-		return 0, "", nil, fmt.Errorf("invalid CSR PEM")
+		return nil, fmt.Errorf("invalid CSR PEM")
 	}
 
 	csr, err := x509.ParseCertificateRequest(block.Bytes)
 	if err != nil {
-		return 0, "", nil, fmt.Errorf("could not parse CSR")
+		return nil, fmt.Errorf("could not parse CSR")
 	}
 
 	commonName := csr.Subject.CommonName
 
 	if err := csr.CheckSignature(); err != nil {
-		return 0, "", nil, fmt.Errorf("invalid CSR signature")
+		return nil, fmt.Errorf("invalid CSR signature")
 	}
 
 	newSerialNumber, err := generateSerialNumber()
 	if err != nil {
-		return 0, "", nil, fmt.Errorf("error while generating certificate serial number")
+		return nil, fmt.Errorf("error while generating certificate serial number")
 	}
 
 	if newSerialNumber == 0 {
-		return 0, "", nil, fmt.Errorf("could not generate certificate serial number")
+		return nil, fmt.Errorf("could not generate certificate serial number")
 	}
 
 	certTemplate := &x509.Certificate{
@@ -576,7 +577,13 @@ func (s *Server) signCSR(csrPEM []byte) (int64, string, []byte, error) {
 
 	certDER, err := x509.CreateCertificate(rand.Reader, certTemplate, s.caRootCert, csr.PublicKey, s.caRootKey)
 	if err != nil {
-		return 0, "", nil, fmt.Errorf("could not sign certificate")
+		return nil, fmt.Errorf("could not sign certificate")
+	}
+
+	certificate := &model.Certificate{
+		Id:             "",
+		CommonName:     "",
+		PEMCertificate: "",
 	}
 
 	return newSerialNumber, commonName, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}), nil
