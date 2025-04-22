@@ -70,21 +70,31 @@ func (d *DAO) Init() error {
 }
 
 // StoreRootCA stores the root CA material (certificate and private key)
-func (d *DAO) StoreRootCA(caCertPEM, caKeyPEM []byte) error {
+func (d *DAO) StoreRootCA(caCert *model.Certificate, caKeyPEM []byte) error {
 	_, err := d.db.Exec(`
 	INSERT INTO root_ca (serial_number, common_name, ca_cert_pem, ca_key_pem)
-	VALUES (?, ?)`, caCertPEM, caKeyPEM)
+	VALUES (?, ?)`, caCert.Id, caCert.CommonName, caCert.PEMCertificate, caKeyPEM)
 	return err
 }
 
+func (d *DAO) GetRootCACert() (*model.Certificate, error) {
+	var caCert model.Certificate
+	err := d.db.QueryRow(`SELECT serial_number, common_name, ca_cert_pem FROM root_ca LIMIT 1`).Scan(&caCert.Id, &caCert.CommonName, &caCert.PEMCertificate)
+	if err != nil {
+		return nil, err
+	}
+	return &caCert, nil
+}
+
 // GetRootCA retrieves the root CA certificate and private key
-func (d *DAO) GetRootCA() ([]byte, []byte, error) {
-	var caCertPEM, caKeyPEM []byte
-	err := d.db.QueryRow(`SELECT ca_cert_pem, ca_key_pem FROM root_ca LIMIT 1`).Scan(&caCertPEM, &caKeyPEM)
+func (d *DAO) GetRootCA() (*model.Certificate, []byte, error) {
+	var caCert model.Certificate
+	var caKeyPEM []byte
+	err := d.db.QueryRow(`SELECT serial_number, common_name, ca_cert_pem, ca_key_pem FROM root_ca LIMIT 1`).Scan(&caCert.Id, &caCert.CommonName, &caCert.PEMCertificate, &caKeyPEM)
 	if err != nil {
 		return nil, nil, err
 	}
-	return caCertPEM, caKeyPEM, nil
+	return &caCert, caKeyPEM, nil
 }
 
 func (d *DAO) DeleteIssuedCertificate(serialNumber int64) error {

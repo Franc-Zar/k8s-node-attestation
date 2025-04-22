@@ -60,11 +60,10 @@ Commands:
 
 // Server represents a CA without an exposed Gin server
 type Server struct {
-	caRootCert    *x509.Certificate
-	caRootKey     crypto.PrivateKey
-	caRootCertPEM []byte
-	caRootKeyPEM  []byte
-	caDao         DAO
+	caRootCert   *x509.Certificate
+	caRootKey    crypto.PrivateKey
+	caRootKeyPEM []byte
+	caDao        DAO
 }
 
 type KeyType int
@@ -107,12 +106,13 @@ func (s *Server) Help() string {
 }
 
 func (s *Server) SetCA() error {
-	var err error
-	err = s.caDao.Open(DatabaseName)
+	err := s.caDao.Open(DatabaseName)
 	if err != nil {
 		return fmt.Errorf("failed to open Root CA database")
 	}
-	s.caRootCertPEM, s.caRootKeyPEM, err = s.caDao.GetRootCA()
+
+	var rootCaCertificate *model.Certificate
+	rootCaCertificate, s.caRootKeyPEM, err = s.caDao.GetRootCA()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("root CA is not initialized")
@@ -120,7 +120,7 @@ func (s *Server) SetCA() error {
 			return fmt.Errorf("failed to get root CA certificate and key: %v", err)
 		}
 	}
-	s.caRootCert, err = cryptoUtils.LoadCertificateFromPEM(s.caRootCertPEM)
+	s.caRootCert, err = cryptoUtils.LoadCertificateFromPEM([]byte(rootCaCertificate.PEMCertificate))
 	if err != nil {
 		return fmt.Errorf("failed to load root CA certificate: %v", err)
 	}
@@ -141,7 +141,6 @@ func (s *Server) SetCA() error {
 	if err != nil {
 		return fmt.Errorf("failed to close Root CA database")
 	}
-
 	return nil
 }
 
@@ -211,7 +210,7 @@ func (s *Server) InitCA(rootKeyType KeyType) error {
 		return fmt.Errorf("could not parse root ca certificate")
 	}
 
-	s.caRootCertPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	caRootCertPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
 	switch key := s.caRootKey.(type) {
 	case *rsa.PrivateKey:
 		s.caRootKeyPEM = pem.EncodeToMemory(&pem.Block{
@@ -231,7 +230,13 @@ func (s *Server) InitCA(rootKeyType KeyType) error {
 		return fmt.Errorf("unsupported key type: %T", key)
 	}
 
-	err = s.caDao.StoreRootCA(s.caRootCertPEM, s.caRootKeyPEM)
+	rootCaCert := &model.Certificate{
+		Id:             newSerialNumber,
+		CommonName:     s.caRootCert.Subject.CommonName,
+		PEMCertificate: string(caRootCertPEM),
+	}
+
+	err = s.caDao.StoreRootCA(rootCaCert, s.caRootKeyPEM)
 	if err != nil {
 		return fmt.Errorf("could not store root CA certificate")
 	}
@@ -239,17 +244,17 @@ func (s *Server) InitCA(rootKeyType KeyType) error {
 	return nil
 }
 
-func (s *Server) IssueCertificate(csrPEM []byte) ([]byte, error) {
+func (s *Server) IssueCertificate(csrPEM []byte) (*model.Certificate, error) {
 	err := s.caDao.Open(DatabaseName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open Root CA database")
 	}
-	serialNumber, commonName, issuedCert, err := s.signCSR(csrPEM)
+	issuedCertificate, err := s.signCSR(csrPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue new certificate: %v", err)
 
 	}
-	err = s.caDao.StoreIssuedCertificate(serialNumber, commonName, issuedCert)
+	err = s.caDao.StoreIssuedCertificate(issuedCertificate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store newly issued certificate: %v", err)
 
@@ -259,7 +264,7 @@ func (s *Server) IssueCertificate(csrPEM []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to close Root CA database")
 	}
-	return issuedCert, nil
+	return issuedCertificate, nil
 }
 
 func (s *Server) GetLatestCRL() ([]byte, error) {
@@ -378,16 +383,16 @@ func (s *Server) RevokeAllCertificates() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open Root CA database")
 	}
-	issuedCertsPEM, err := s.caDao.GetAllIssuedCertificates()
+	issuedCerts, err := s.caDao.GetAllIssuedCertificates()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issued certificates: %v", err)
 	}
 
 	// Prepare the list of revoked certificates
 	var revokedEntries []x509.RevocationListEntry
-	for _, certPEM := range issuedCertsPEM {
+	for _, cert := range issuedCerts {
 		// Decode the input PEM certificate
-		block, _ := pem.Decode(certPEM)
+		block, _ := pem.Decode([]byte(cert.PEMCertificate))
 		if block == nil || block.Type != "CERTIFICATE" {
 			return nil, fmt.Errorf("invalid PEM certificate")
 		}
@@ -503,10 +508,12 @@ func (s *Server) GetCertificateByCommonName(commonName string) (*model.Certifica
 	if err != nil {
 		return nil, fmt.Errorf("failed to open Root CA database")
 	}
+
 	cert, err := s.caDao.GetIssuedCertificateByCommonName(commonName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get certificate with CN: '%s': %v", commonName, err)
 	}
+
 	err = s.caDao.Close()
 	if err != nil {
 		return nil, fmt.Errorf("failed to close Root CA database")
@@ -514,11 +521,22 @@ func (s *Server) GetCertificateByCommonName(commonName string) (*model.Certifica
 	return cert, nil
 }
 
-func (s *Server) GetRootCACert() ([]byte, error) {
-	if s.caRootCertPEM != nil {
-		return s.caRootCertPEM, nil
+func (s *Server) GetRootCACert() (*model.Certificate, error) {
+	err := s.caDao.Open(DatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Root CA database")
 	}
-	return nil, fmt.Errorf("root CA certificate not initialized")
+
+	caCert, err := s.caDao.GetRootCACert()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get root CA certificate: %v", err)
+	}
+
+	err = s.caDao.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close Root CA database")
+	}
+	return caCert, fmt.Errorf("root CA certificate not initialized")
 }
 
 // Private
@@ -581,10 +599,10 @@ func (s *Server) signCSR(csrPEM []byte) (*model.Certificate, error) {
 	}
 
 	certificate := &model.Certificate{
-		Id:             "",
-		CommonName:     "",
-		PEMCertificate: "",
+		Id:             newSerialNumber,
+		CommonName:     commonName,
+		PEMCertificate: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})),
 	}
 
-	return newSerialNumber, commonName, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}), nil
+	return certificate, nil
 }

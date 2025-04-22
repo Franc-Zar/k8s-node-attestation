@@ -20,6 +20,10 @@ github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250415075920-ea4a3
 github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250415075920-ea4a3fc6155d/go.mod h1:Fg8MpWh4pO/yM1t/T4NZwc76hL0LwH/NqN62AoN+pGs=
 github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250421204033-7a57c9ad7c9e h1:JTP5Huh+/d27mlMIqHEnkGxerp9mQqH4iZKYgbOQQIc=
 github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250421204033-7a57c9ad7c9e/go.mod h1:tmXP1ybSFFT84g1Xt5H6k3NgRkHuN9HpY47Eq8raS6Y=
+github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250422122212-e856c8ba298d h1:NWyuKkznuRpzUt42O+PYj0VdlrMax7Xi1t+cZAugr1k=
+github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250422122212-e856c8ba298d/go.mod h1:tmXP1ybSFFT84g1Xt5H6k3NgRkHuN9HpY47Eq8raS6Y=
+github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250422125843-4580642c10ac h1:JLGIKVl8pJfYgXU2XJULCQPihqtU1LuzfS7OjDKBX68=
+github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250422125843-4580642c10ac/go.mod h1:tmXP1ybSFFT84g1Xt5H6k3NgRkHuN9HpY47Eq8raS6Y=
 github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250409104027-c4f37d0c0da2 h1:gNYWzKlSGR2vjiaG6H1kDSJxSsJBbYjM3Vpw+ff6YvA=
 github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250409104027-c4f37d0c0da2/go.mod h1:3Wx7oZmA8p6JycXUgblMd2/ytyP8B/SJdU2B8Kfn5RA=
 github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250410164253-aab2fce2853d h1:cU8n+blOe3w+hQsTcmDQ6db6sj31FVMb896yY2JW7IM=
@@ -40,6 +44,8 @@ github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250415092637-f494a
 github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250415092637-f494aebc9f64/go.mod h1:sOpmPpc8nZJ6cRnEd/AOYvy7VGIyrVwiQcDrY7Yp+QY=
 github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250422122212-e856c8ba298d h1:qVUp7A8K9nG9W23whtyL+rpvKw6R7J0YjRGDewKsvqc=
 github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250422122212-e856c8ba298d/go.mod h1:sOpmPpc8nZJ6cRnEd/AOYvy7VGIyrVwiQcDrY7Yp+QY=
+github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250422125843-4580642c10ac h1:i3B5jrszGtwdn7Wk6vFRPno0EtGGip82EqjojVHkmc0=
+github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250422125843-4580642c10ac/go.mod h1:sOpmPpc8nZJ6cRnEd/AOYvy7VGIyrVwiQcDrY7Yp+QY=
 github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250409102330-c6fe0ac46c13 h1:t3OEJHMpCQJP/4BoTZo3ESahKjhG8qcQsDSG2vcVoEU=
 github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250409102330-c6fe0ac46c13/go.mod h1:45w2KM9wIHypCIT9tQXq+d02udj0hdrJ2hdB5I6sJDQ=
 github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250410164253-aab2fce2853d h1:wscb07B4EbYzqmdZZn/GXyf3kdrBHEx5YVfsTAtbMZo=
@@ -60,6 +66,8 @@ github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250421204033-7a57c9
 github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250421204033-7a57c9ad7c9e/go.mod h1:45w2KM9wIHypCIT9tQXq+d02udj0hdrJ2hdB5I6sJDQ=
 github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250422122212-e856c8ba298d h1:fWYhx9DLLdQC//k+ZBzAPl6yutn8LwMDh8SVL+64vBA=
 github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250422122212-e856c8ba298d/go.mod h1:45w2KM9wIHypCIT9tQXq+d02udj0hdrJ2hdB5I6sJDQ=
+github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250422125843-4580642c10ac h1:MUidMAkHvAalPGwXi+nePR2wslG0fbWlJKKA6wQZppk=
+github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250422125843-4580642c10ac/go.mod h1:45w2KM9wIHypCIT9tQXq+d02udj0hdrJ2hdB5I6sJDQ=
 github.com/google/go-attestation v0.5.1 h1:jqtOrLk5MNdliTKjPbIPrAaRKJaKW+0LIU2n/brJYms=
 github.com/google/go-attestation v0.5.1/go.mod h1:KqGatdUhg5kPFkokyzSBDxwSCFyRgIgtRkMp6c3lOBQ=
 github.com/google/go-tpm v0.9.3 h1:+yx0/anQuGzi+ssRqeD6WpXjW2L/V0dItUayO0i9sRc=
