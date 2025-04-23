@@ -3,6 +3,7 @@ package worker_handler
 import (
 	"github.com/franc-zar/k8s-node-attestation/pkg/cluster"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
+	"github.com/franc-zar/k8s-node-attestation/pkg/registrar"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
@@ -64,23 +65,24 @@ func (w *WorkerHandler) WatchNodes() {
 		return
 	}
 	<-stopStructCh
-	defer w.attestationDatabase.Close()
 }
 
 func (w *WorkerHandler) registerNode(node *corev1.Node) {
 
+	_, _, err := registrar.RegisterNodeCommand()
 }
 
 func (w *WorkerHandler) unregisterNode(node *corev1.Node) {
 	nodeUID := string(node.GetUID())
 	nodeName := node.GetName()
 
-	err := w.attestationDatabase.DeleteWorker(nodeUID)
+	_, _, err := registrar.UnregisterNodeCommand(nodeUID)
 	if err != nil {
-		logger.Error("Failed to delete worker node '%s' from attestation database: %v", nodeUID, err)
+		logger.Error("Failed to delete worker node '%s' from Registrar database: %v", nodeUID, err)
 		return
 	}
-	logger.Success("Deleted worker node '%s' from attestation database", nodeUID)
+
+	logger.Success("Deleted worker node '%s' from Registrar database", nodeUID)
 
 	err = w.interactor.DeleteAgent(nodeName)
 	if err != nil {

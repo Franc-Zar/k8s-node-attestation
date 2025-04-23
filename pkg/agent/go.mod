@@ -3,9 +3,10 @@ module github.com/franc-zar/k8s-node-attestation/pkg/agent
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250423152325-0237ad5744f1
-	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250423152325-0237ad5744f1
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250423152325-0237ad5744f1
+	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250423213236-ed6bb11ae4d6
+	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250423213236-ed6bb11ae4d6
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250423213236-ed6bb11ae4d6
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250423213236-ed6bb11ae4d6
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 )
@@ -16,7 +17,6 @@ require (
 	github.com/cloudwego/base64x v0.1.5 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250423152325-0237ad5744f1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

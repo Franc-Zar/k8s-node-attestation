@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -38,6 +39,18 @@ func EncodePublicKeyToPEM(pubKey crypto.PublicKey) ([]byte, error) {
 	})
 
 	return pubPEM, nil
+}
+
+func GenerateRandSequence(size int) ([]byte, error) {
+	if size <= 0 {
+		return nil, fmt.Errorf("invalid nonce size: %d", size)
+	}
+	nonce := make([]byte, size)
+	_, err := rand.Read(nonce)
+	if err != nil {
+		return nil, fmt.Errorf("error generating nonce: %v", err)
+	}
+	return nonce, nil
 }
 
 // DecodePrivateKeyFromPEM decodes a PEM-encoded RSA or ECDSA private key and returns it as a crypto.PrivateKey.

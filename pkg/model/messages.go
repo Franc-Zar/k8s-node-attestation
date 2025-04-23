@@ -24,5 +24,6 @@ type WorkerChallengeResponse struct {
 	Message   string `json:"message"`
 	Status    string `json:"status"`
 	HMAC      string `json:"hmac"`
+	Salt      string `json:"salt"`
 	BootQuote string `json:"bootQuote"`
 }

@@ -3,12 +3,16 @@ package agent
 import (
 	"crypto/x509"
 	"encoding/base64"
+	"fmt"
 	"github.com/franc-zar/k8s-node-attestation/pkg/attestation"
 	cryptoUtils "github.com/franc-zar/k8s-node-attestation/pkg/crypto"
+	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -20,18 +24,21 @@ const (
 )
 
 type Server struct {
-	Host           string
-	Port           int
-	tpm            *attestation.TPM
-	router         *gin.Engine
-	tlsCertificate *x509.Certificate
-	workerId       string
+	Host                  string
+	Port                  int
+	imaMeasurementLogPath string
+	rootCaCert            *x509.Certificate
+	tpm                   *attestation.TPM
+	router                *gin.Engine
+	tlsCertificate        *x509.Certificate
+	workerId              string
 }
 
-func New(tpm *attestation.TPM, tlsCertificate *x509.Certificate) *Server {
+func New(tpm *attestation.TPM, tlsCertificate *x509.Certificate, rootCaCert *x509.Certificate) *Server {
 	newServer := &Server{}
 	newServer.tpm = tpm
 	newServer.tlsCertificate = tlsCertificate
+	newServer.rootCaCert = rootCaCert
 	return newServer
 }
 
@@ -87,7 +94,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 		return
 	}
 
-	challengeSecret, err := s.tpm.ActivateAIKCredential(aikCredential, aikEncryptedSecret)
+	ephemeralKey, err := s.tpm.ActivateAIKCredential(aikCredential, aikEncryptedSecret)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, model.SimpleResponse{
 			Message: "Agent failed to perform Credential Activation",
@@ -96,28 +103,40 @@ func (s *Server) challengeWorker(c *gin.Context) {
 		return
 	}
 
-	ephemeralKey := challengeSecret
-	quoteNonce := challengeSecret[:8]
-
+	salt, err := cryptoUtils.GenerateRandSequence(32)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Agent failed to generate salt",
+			Status:  model.Error,
+		})
+	}
+	quoteNonce, err := cryptoUtils.ComputeHKDF(ephemeralKey, salt, cryptoUtils.NonceDerivationInfo, 8)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Agent failed to compute quote nonce",
+			Status:  model.Error,
+		})
+	}
 	bootQuoteJSON, err := s.tpm.QuoteBootPCRs(quoteNonce)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Error while computing Boot Aggregate quote",
-			"status":  model.Error,
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Error while computing Boot Aggregate quote",
+			Status:  model.Error,
 		})
 		return
 	}
 
 	// Compute HMAC on the worker UUID using the ephemeral key
-	challengeHmac := cryptoUtils.HMAC([]byte(s.workerId), ephemeralKey)
+	challengeHmac := cryptoUtils.ComputeHMAC([]byte(s.workerId), ephemeralKey)
 	encodedChallengeHmac := base64.StdEncoding.EncodeToString(challengeHmac)
+	encodedBootQuote := base64.StdEncoding.EncodeToString(bootQuoteJSON)
 
 	// Respond with success, including the HMAC of the UUID
-	c.JSON(http.StatusOK, gin.H{
-		"message":   "Worker registration challenge decrypted and verified successfully",
-		"status":    model.Success,
-		"hmac":      encodedChallengeHmac,
-		"bootQuote": bootQuoteJSON,
+	c.JSON(http.StatusOK, model.WorkerChallengeResponse{
+		Message:   "Worker registration challenge decrypted and verified successfully",
+		Status:    model.Success,
+		HMAC:      encodedChallengeHmac,
+		BootQuote: encodedBootQuote,
 	})
 	return
 }
@@ -128,6 +147,29 @@ func (s *Server) acknowledgeRegistration(c *gin.Context) {
 
 func (s *Server) workerAttestation(c *gin.Context) {
 
+}
+
+func (s *Server) getWorkerMeasurementLog() (string, error) {
+	// Open the file
+	imaMeasurementLog, err := os.Open(s.imaMeasurementLogPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open IMA measurement log: %v", err)
+	}
+
+	// Read the file content
+	fileContent, err := io.ReadAll(imaMeasurementLog)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file: %v", err)
+	}
+
+	err = imaMeasurementLog.Close()
+	if err != nil {
+		return "", fmt.Errorf("failed to close IMA measurement log: %v", err)
+	}
+
+	// Encode the file content into Base64
+	base64Encoded := base64.StdEncoding.EncodeToString(fileContent)
+	return base64Encoded, nil
 }
 
 func (s *Server) Start() {
@@ -142,6 +184,6 @@ func (s *Server) Start() {
 	// Start the server
 	err := s.router.Run(":" + strconv.Itoa(s.Port))
 	if err != nil {
-		logger.Fatal("failed to start registrar: %v", err)
+		logger.Fatal("failed to start agent: %v", err)
 	}
 }
