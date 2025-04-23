@@ -1,7 +1,9 @@
 package ca
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	"os/exec"
 )
 
@@ -73,31 +75,47 @@ func RevokeAllCertificateCommand() (bool, string, error) {
 	return true, string(output), nil
 }
 
-func GetCertificateByCommonNameCommand(commonName string) (string, error) {
+func GetCertificateByCommonNameCommand(commonName string) (*model.Certificate, error) {
 	cmd := exec.Command(KubernetesCaPluginCommandName, GetCertificateCommandName, "--common-name", commonName)
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error %s command: %v", GetCertificateCommandName, err)
+		return nil, fmt.Errorf("error %s command: %v", GetCertificateCommandName, err)
 	}
-	return string(output), nil
+	var certificate model.Certificate
+	err = json.Unmarshal(output, &certificate)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling certificate: %v", err)
+	}
+	return &certificate, nil
 }
 
-func GetCertificateBySerialNumberCommand(serialNumber string) (string, error) {
+func GetCertificateBySerialNumberCommand(serialNumber string) (*model.Certificate, error) {
 	cmd := exec.Command(KubernetesCaPluginCommandName, GetCertificateCommandName, "--serial-number", serialNumber)
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error %s command: %v", GetCertificateCommandName, err)
+		return nil, fmt.Errorf("error %s command: %v", GetCertificateCommandName, err)
 	}
-	return string(output), nil
+	var certificate model.Certificate
+	err = json.Unmarshal(output, &certificate)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling certificate: %v", err)
+	}
+	return &certificate, nil
 }
 
-func GetRootCertificateCommand() (string, error) {
+func GetRootCertificateCommand() (*model.Certificate, error) {
 	cmd := exec.Command(KubernetesCaPluginCommandName, GetCertificateCommandName, "--root")
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error running %s command: %v", GetCertificateCommandName, err)
+		return nil, fmt.Errorf("error running %s command: %v", GetCertificateCommandName, err)
 	}
-	return string(output), nil
+
+	var rootCertificate model.Certificate
+	err = json.Unmarshal(output, &rootCertificate)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling certificate: %v", err)
+	}
+	return &rootCertificate, nil
 }
 
 func GetCRLCommand() (string, error) {

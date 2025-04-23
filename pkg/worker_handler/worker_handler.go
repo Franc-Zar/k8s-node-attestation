@@ -15,10 +15,9 @@ import (
 type WorkerHandler struct {
 	interactor      cluster.Interactor
 	informerFactory informers.SharedInformerFactory
-	defaultResync   int
 }
 
-func (w *WorkerHandler) Init(defaultResync int, dataSourceName string) {
+func (w *WorkerHandler) Init(defaultResync int) {
 	w.interactor.ConfigureKubernetesClient()
 	w.informerFactory = informers.NewSharedInformerFactory(w.interactor.ClientSet, time.Minute*time.Duration(defaultResync))
 }

@@ -1,7 +1,9 @@
 package registrar
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	"os/exec"
 )
 
@@ -46,31 +48,46 @@ func UnregisterNodeCommand(uuid string) (bool, string, error) {
 	return true, string(output), nil
 }
 
-func GetWorkerByUuidCommand(uuid string) (string, error) {
+func GetWorkerByUuidCommand(uuid string) (*model.WorkerNode, error) {
 	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetWorkerCommandName, "--uuid", uuid)
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error running %s command: %v", GetWorkerCommandName, err)
+		return nil, fmt.Errorf("error running %s command: %v", GetWorkerCommandName, err)
 	}
-	return string(output), nil
+	var worker model.WorkerNode
+	err = json.Unmarshal(output, &worker)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling worker: %v", err)
+	}
+	return &worker, nil
 }
 
-func GetWorkerByNameCommand(name string) (string, error) {
+func GetWorkerByNameCommand(name string) (*model.WorkerNode, error) {
 	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetWorkerCommandName, "--name", name)
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error running %s command: %v", GetWorkerCommandName, err)
+		return nil, fmt.Errorf("error running %s command: %v", GetWorkerCommandName, err)
 	}
-	return string(output), nil
+	var worker model.WorkerNode
+	err = json.Unmarshal(output, &worker)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling worker: %v", err)
+	}
+	return &worker, nil
 }
 
-func GetAllWorkersCommand() (string, error) {
+func GetAllWorkersCommand() ([]model.WorkerNode, error) {
 	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetWorkerCommandName, "--all")
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error running %s command: %v", GetWorkerCommandName, err)
+		return nil, fmt.Errorf("error running %s command: %v", GetWorkerCommandName, err)
 	}
-	return string(output), nil
+	var workers []model.WorkerNode
+	err = json.Unmarshal(output, &workers)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling workers: %v", err)
+	}
+	return workers, nil
 }
 
 func StoreVendorIntermediateCertCommand(intermediateCert string) (bool, string, error) {
@@ -91,40 +108,60 @@ func StoreVendorRootCertCommand(rootCert string) (bool, string, error) {
 	return true, string(output), nil
 }
 
-func GetVendorCertByCommonNameCommand(commonName string) (string, error) {
+func GetVendorCertByCommonNameCommand(commonName string) (*model.TPMCACertificate, error) {
 	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCertCommandName, "--common-name", commonName)
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error running %s command: %v", GetVendorCertCommandName, err)
+		return nil, fmt.Errorf("error running %s command: %v", GetVendorCertCommandName, err)
 	}
-	return string(output), nil
+	var tpmCaCert model.TPMCACertificate
+	err = json.Unmarshal(output, &tpmCaCert)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling vendor ca certificate: %v", err)
+	}
+	return &tpmCaCert, nil
 }
 
-func GetAllVendorCertCommand() (string, error) {
+func GetAllVendorCertsCommand() ([]model.TPMCACertificate, error) {
 	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCertCommandName, "--all")
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error running %s command: %v", GetVendorCertCommandName, err)
+		return nil, fmt.Errorf("error running %s command: %v", GetVendorCertCommandName, err)
 	}
-	return string(output), nil
+	var tpmCaCerts []model.TPMCACertificate
+	err = json.Unmarshal(output, &tpmCaCerts)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling vendor ca certificates: %v", err)
+	}
+	return tpmCaCerts, nil
 }
 
-func GetVendorByTcgIdCommand(tcgId string) (string, error) {
+func GetVendorByTcgIdCommand(tcgId string) (*model.TPMVendor, error) {
 	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCommandName, "--tcg-id", tcgId)
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error running %s command: %v", GetVendorCommandName, err)
+		return nil, fmt.Errorf("error running %s command: %v", GetVendorCommandName, err)
 	}
-	return string(output), nil
+	var tpmVendor model.TPMVendor
+	err = json.Unmarshal(output, &tpmVendor)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling vendor: %v", err)
+	}
+	return &tpmVendor, nil
 }
 
-func GetAllVendorsCommand() (string, error) {
+func GetAllVendorsCommand() ([]model.TPMVendor, error) {
 	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCommandName, "--all")
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("error running %s command: %v", GetVendorCommandName, err)
+		return nil, fmt.Errorf("error running %s command: %v", GetVendorCommandName, err)
 	}
-	return string(output), nil
+	var tpmVendors []model.TPMVendor
+	err = json.Unmarshal(output, &tpmVendors)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling vendor: %v", err)
+	}
+	return tpmVendors, nil
 }
 
 func DeleteVendorCertCommand(commonName string) (bool, string, error) {
