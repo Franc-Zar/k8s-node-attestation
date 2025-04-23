@@ -3,6 +3,7 @@ package crypto
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/hmac"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -381,4 +382,21 @@ func ParseSignature(sig []byte) (*big.Int, *big.Int) {
 	r := new(big.Int).SetBytes(sig[:32])
 	s := new(big.Int).SetBytes(sig[32:64])
 	return r, s
+}
+
+func VerifyHMAC(message, key, providedHMAC []byte) error {
+	h := hmac.New(sha256.New, key)
+	h.Write(message)
+	expectedHMAC := h.Sum(nil)
+
+	if !hmac.Equal(expectedHMAC, providedHMAC) {
+		return fmt.Errorf("HMAC verification failed")
+	}
+	return nil
+}
+
+func ComputeHMAC(message, key []byte) []byte {
+	h := hmac.New(sha256.New, key)
+	h.Write(message)
+	return h.Sum(nil)
 }

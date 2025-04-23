@@ -14,3 +14,15 @@ type SimpleResponse struct {
 	Message string `json:"message"`
 	Status  string `json:"status"`
 }
+
+type WorkerChallenge struct {
+	AIKCredential      string `json:"AIKCredential"`
+	AIKEncryptedSecret string `json:"AIKEncryptedSecret"`
+}
+
+type WorkerChallengeResponse struct {
+	Message   string `json:"message"`
+	Status    string `json:"status"`
+	HMAC      string `json:"hmac"`
+	BootQuote string `json:"bootQuote"`
+}
