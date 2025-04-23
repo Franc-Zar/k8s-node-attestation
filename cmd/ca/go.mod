@@ -3,8 +3,8 @@ module github.com/franc-zar/k8s-node-attestation/cmd/ca
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250423094347-901efbf4d2b0
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250423094347-901efbf4d2b0
+	github.com/franc-zar/k8s-node-attestation/pkg/ca v0.0.0-20250423121841-c83f6fb1036c
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250423121841-c83f6fb1036c
 )
 
 require (

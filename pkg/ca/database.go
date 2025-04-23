@@ -73,7 +73,7 @@ func (d *DAO) Init() error {
 func (d *DAO) StoreRootCA(caCert *model.Certificate, caKeyPEM []byte) error {
 	_, err := d.db.Exec(`
 	INSERT INTO root_ca (serial_number, common_name, ca_cert_pem, ca_key_pem)
-	VALUES (?, ?)`, caCert.Id, caCert.CommonName, caCert.PEMCertificate, caKeyPEM)
+	VALUES (?, ?, ?, ?)`, caCert.Id, caCert.CommonName, caCert.PEMCertificate, caKeyPEM)
 	return err
 }
 
@@ -106,7 +106,7 @@ func (d *DAO) DeleteIssuedCertificate(serialNumber int64) error {
 func (d *DAO) StoreIssuedCertificate(certificate *model.Certificate) error {
 	_, err := d.db.Exec(`
 	INSERT INTO issued_certificates (serial_number, common_name, certificate_pem)
-	VALUES (?, ?)`, certificate.Id, certificate.CommonName, certificate.PEMCertificate)
+	VALUES (?, ?, ?)`, certificate.Id, certificate.CommonName, certificate.PEMCertificate)
 	return err
 }
 
