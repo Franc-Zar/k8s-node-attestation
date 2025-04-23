@@ -52,7 +52,7 @@ Commands:
           List all TPM CA certificates
 
   delete-vendor-cert
-      --cn <common-name>
+      --common-name, -cn <common-name>
           Delete a TPM CA certificate by Common Name`
 
 type Server struct {

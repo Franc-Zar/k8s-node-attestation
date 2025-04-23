@@ -28,8 +28,8 @@ func HelpCommand() (string, error) {
 	return string(output), nil
 }
 
-func RegisterNodeCommand() (bool, string, error) {
-	cmd := exec.Command(KubernetesRegistrarPluginCommandName, RegisterWorkerCommandName)
+func RegisterNodeCommand(workerNode string) (bool, string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, RegisterWorkerCommandName, "--worker", workerNode)
 	output, err := cmd.Output()
 	if err != nil {
 		return false, "", fmt.Errorf("error running %s command: %v", RegisterWorkerCommandName, err)
@@ -37,8 +37,8 @@ func RegisterNodeCommand() (bool, string, error) {
 	return true, string(output), nil
 }
 
-func UnregisterNodeCommand() (bool, string, error) {
-	cmd := exec.Command(KubernetesRegistrarPluginCommandName, UnregisterWorkerCommandName)
+func UnregisterNodeCommand(uuid string) (bool, string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, UnregisterWorkerCommandName, "--uuid", uuid)
 	output, err := cmd.Output()
 	if err != nil {
 		return false, "", fmt.Errorf("error running %s command: %v", UnregisterWorkerCommandName, err)
@@ -46,8 +46,8 @@ func UnregisterNodeCommand() (bool, string, error) {
 	return true, string(output), nil
 }
 
-func GetWorkerCommand() (string, error) {
-	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetWorkerCommandName)
+func GetWorkerByUuidCommand(uuid string) (string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetWorkerCommandName, "--uuid", uuid)
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("error running %s command: %v", GetWorkerCommandName, err)
@@ -55,8 +55,26 @@ func GetWorkerCommand() (string, error) {
 	return string(output), nil
 }
 
-func StoreVendorCertCommand() (bool, string, error) {
-	cmd := exec.Command(KubernetesRegistrarPluginCommandName, StoreVendorCertCommandName)
+func GetWorkerByNameCommand(name string) (string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetWorkerCommandName, "--name", name)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("error running %s command: %v", GetWorkerCommandName, err)
+	}
+	return string(output), nil
+}
+
+func GetAllWorkersCommand() (string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetWorkerCommandName, "--all")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("error running %s command: %v", GetWorkerCommandName, err)
+	}
+	return string(output), nil
+}
+
+func StoreVendorIntermediateCertCommand(intermediateCert string) (bool, string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, StoreVendorCertCommandName, "--intermediate", intermediateCert)
 	output, err := cmd.Output()
 	if err != nil {
 		return false, "", fmt.Errorf("error running %s command: %v", StoreVendorCertCommandName, err)
@@ -64,8 +82,17 @@ func StoreVendorCertCommand() (bool, string, error) {
 	return true, string(output), nil
 }
 
-func GetVendorCertCommand() (string, error) {
-	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCertCommandName)
+func StoreVendorRootCertCommand(rootCert string) (bool, string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, StoreVendorCertCommandName, "--root", rootCert)
+	output, err := cmd.Output()
+	if err != nil {
+		return false, "", fmt.Errorf("error running %s command: %v", StoreVendorCertCommandName, err)
+	}
+	return true, string(output), nil
+}
+
+func GetVendorCertByCommonNameCommand(commonName string) (string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCertCommandName, "--common-name", commonName)
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("error running %s command: %v", GetVendorCertCommandName, err)
@@ -73,11 +100,38 @@ func GetVendorCertCommand() (string, error) {
 	return string(output), nil
 }
 
-func GetVendorCommand() (string, error) {
-	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCommandName)
+func GetAllVendorCertCommand() (string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCertCommandName, "--all")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("error running %s command: %v", GetVendorCertCommandName, err)
+	}
+	return string(output), nil
+}
+
+func GetVendorByTcgIdCommand(tcgId string) (string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCommandName, "--tcg-id", tcgId)
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("error running %s command: %v", GetVendorCommandName, err)
 	}
 	return string(output), nil
+}
+
+func GetAllVendorsCommand() (string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, GetVendorCommandName, "--all")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("error running %s command: %v", GetVendorCommandName, err)
+	}
+	return string(output), nil
+}
+
+func DeleteVendorCertCommand(commonName string) (bool, string, error) {
+	cmd := exec.Command(KubernetesRegistrarPluginCommandName, DeleteVendorCertCommandName, "--common-name", commonName)
+	output, err := cmd.Output()
+	if err != nil {
+		return false, "", fmt.Errorf("error running %s command: %v", DeleteVendorCertCommandName, err)
+	}
+	return true, string(output), nil
 }
