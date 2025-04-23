@@ -222,7 +222,7 @@ func VerifyTPMRootCACertificate(rootCert *x509.Certificate, tpmVendors []model.T
 
 	isSubjectValidVendor := false
 	for _, tpmVendor := range tpmVendors {
-		isSubjectValidVendor = strings.Contains(rootCert.Subject.String(), tpmVendor.Name)
+		isSubjectValidVendor = strings.Contains(rootCert.Subject.String(), tpmVendor.CommonName)
 		if isSubjectValidVendor {
 			break
 		}
