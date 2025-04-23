@@ -6,6 +6,7 @@ require (
 	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250422190709-604c3f12b6c4
 	github.com/google/go-attestation v0.5.1
 	github.com/google/go-tpm v0.9.3
+	golang.org/x/crypto v0.13.0
 )
 
 require golang.org/x/sys v0.32.0 // indirect

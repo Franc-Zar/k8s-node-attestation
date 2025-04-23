@@ -13,6 +13,8 @@ import (
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	x509ext "github.com/google/go-attestation/x509"
 	"github.com/google/go-tpm/tpmutil"
+	"golang.org/x/crypto/hkdf"
+	"io"
 	"math/big"
 	"strings"
 	"time"
@@ -20,6 +22,8 @@ import (
 
 var SANoid = asn1.ObjectIdentifier{2, 5, 29, 17} // OID for subjectAltName
 var EKCertificateOid = asn1.ObjectIdentifier{2, 23, 133, 8, 1}
+
+var NonceDerivationInfo = []byte("nonce-derivation")
 
 // EncodePublicKeyToPEM converts an RSA or ECDSA public key to PEM format.
 func EncodePublicKeyToPEM(pubKey crypto.PublicKey) ([]byte, error) {
@@ -399,4 +403,13 @@ func ComputeHMAC(message, key []byte) []byte {
 	h := hmac.New(sha256.New, key)
 	h.Write(message)
 	return h.Sum(nil)
+}
+
+func ComputeHKDF(secret, salt, info []byte, keySize int) ([]byte, error) {
+	hkdfReader := hkdf.New(sha256.New, secret, salt, info)
+	key := make([]byte, keySize)
+	if _, err := io.ReadFull(hkdfReader, key); err != nil {
+		return nil, fmt.Errorf("failed to derive key bytes: %v", err)
+	}
+	return key, nil
 }
