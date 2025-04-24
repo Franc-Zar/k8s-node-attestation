@@ -27,3 +27,8 @@ type WorkerChallengeResponse struct {
 	Salt      string `json:"salt"`
 	BootQuote string `json:"bootQuote"`
 }
+
+type WorkerAttestationRequest struct {
+	Nonce    string `json:"nonce"`
+	NodeUUID string `json:"nodeUUID"`
+}

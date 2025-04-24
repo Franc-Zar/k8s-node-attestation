@@ -10,6 +10,7 @@ import (
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/veraison/cmw"
 	"io"
 	"net/http"
 	"os"
@@ -110,6 +111,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 			Status:  model.Error,
 		})
 	}
+
 	quoteNonce, err := cryptoUtils.ComputeHKDF(ephemeralKey, salt, cryptoUtils.NonceDerivationInfo, 8)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
@@ -117,6 +119,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 			Status:  model.Error,
 		})
 	}
+
 	bootQuoteJSON, err := s.tpm.QuoteBootPCRs(quoteNonce)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
@@ -130,12 +133,14 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	challengeHmac := cryptoUtils.ComputeHMAC([]byte(s.workerId), ephemeralKey)
 	encodedChallengeHmac := base64.StdEncoding.EncodeToString(challengeHmac)
 	encodedBootQuote := base64.StdEncoding.EncodeToString(bootQuoteJSON)
+	encodedSalt := base64.StdEncoding.EncodeToString(salt)
 
 	// Respond with success, including the HMAC of the UUID
 	c.JSON(http.StatusOK, model.WorkerChallengeResponse{
 		Message:   "Worker registration challenge decrypted and verified successfully",
 		Status:    model.Success,
 		HMAC:      encodedChallengeHmac,
+		Salt:      encodedSalt,
 		BootQuote: encodedBootQuote,
 	})
 	return
@@ -146,6 +151,53 @@ func (s *Server) acknowledgeRegistration(c *gin.Context) {
 }
 
 func (s *Server) workerAttestation(c *gin.Context) {
+	var workerAttestationRequest model.WorkerAttestationRequest
+	if err := c.BindJSON(&workerAttestationRequest); err != nil {
+		c.JSON(http.StatusBadRequest, model.SimpleResponse{
+			Message: "Invalid request payload",
+			Status:  model.Error,
+		})
+		return
+	}
+
+	if s.workerId != workerAttestationRequest.NodeUUID {
+		c.JSON(http.StatusUnauthorized, model.SimpleResponse{
+			Message: "Received UUID mismatch with target worker UUID",
+			Status:  model.Error,
+		})
+	}
+
+	quoteNonce, err := base64.StdEncoding.DecodeString(workerAttestationRequest.Nonce)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, model.SimpleResponse{
+			Message: "Agent failed to decode quote nonce",
+			Status:  model.Error,
+		})
+		return
+	}
+
+	quotePcrs := []int{10}
+	workerQuote, err := s.tpm.QuoteGeneralPurposePCRs(quoteNonce, quotePcrs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, model.SimpleResponse{
+			Message: "Agent failed to generate quote PCRs",
+			Status:  model.Error,
+		})
+		return
+	}
+
+	encodedQuote := base64.StdEncoding.EncodeToString(workerQuote)
+
+	measurementLog, err := s.getWorkerMeasurementLog()
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, model.SimpleResponse{
+			Message: "Agent failed to fetch measurement log",
+			Status:  model.Error,
+		})
+		return
+	}
+
+	evidence := cmw.NewCollection()
 
 }
 
@@ -156,7 +208,6 @@ func (s *Server) getWorkerMeasurementLog() (string, error) {
 		return "", fmt.Errorf("failed to open IMA measurement log: %v", err)
 	}
 
-	// Read the file content
 	fileContent, err := io.ReadAll(imaMeasurementLog)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file: %v", err)
@@ -166,8 +217,6 @@ func (s *Server) getWorkerMeasurementLog() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to close IMA measurement log: %v", err)
 	}
-
-	// Encode the file content into Base64
 	base64Encoded := base64.StdEncoding.EncodeToString(fileContent)
 	return base64Encoded, nil
 }

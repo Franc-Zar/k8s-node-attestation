@@ -1,13 +1,13 @@
 package attestation
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	cryptoUtils "github.com/franc-zar/k8s-node-attestation/pkg/crypto"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-tpm-tools/client"
 	"github.com/google/go-tpm-tools/simulator"
 	tpm2legacy "github.com/google/go-tpm/legacy/tpm2"
@@ -15,6 +15,7 @@ import (
 	"io"
 	"slices"
 	"sync"
+	"time"
 )
 
 var bootReservedPCRs = []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
@@ -88,30 +89,49 @@ func (tpm *TPM) Close() {
 	}
 }
 
-func (tpm *TPM) GetEKCertificate() ([]byte, error) {
-	tpm.mtx.Lock()
-	defer tpm.mtx.Unlock()
-
+func (tpm *TPM) getEK() *client.Key {
 	var EK *client.Key
 	var err error
-
 	switch tpm.KeyType {
 	case RSA:
 		EK, err = client.EndorsementKeyRSA(tpm.rwc)
 	case ECC:
 		EK, err = client.EndorsementKeyECC(tpm.rwc)
 	default:
-		return nil, fmt.Errorf("unsupported key type: %s", tpm.KeyType.String())
+		logger.Fatal("unsupported key type: %s", tpm.KeyType.String())
 	}
 	if err != nil {
-		return nil, fmt.Errorf("unable to get EK: %v", err)
+		logger.Fatal("unable to get EK: %v", err)
 	}
+	return EK
+}
 
+func (tpm *TPM) getAIK() *client.Key {
+	var AIK *client.Key
+	var err error
+	switch tpm.KeyType {
+	case RSA:
+		AIK, err = client.NewCachedKey(tpm.rwc, tpm2legacy.HandleOwner, client.AKTemplateRSA(), tpm.aikHandle)
+	case ECC:
+		AIK, err = client.NewCachedKey(tpm.rwc, tpm2legacy.HandleOwner, client.AKTemplateECC(), tpm.aikHandle)
+	default:
+		logger.Fatal("unsupported key type: %s", tpm.KeyType.String())
+	}
+	if err != nil {
+		logger.Fatal("Unable to get AIK: %v", err)
+	}
+	return AIK
+}
+
+func (tpm *TPM) GetEKCertificate() ([]byte, error) {
+	tpm.mtx.Lock()
+	defer tpm.mtx.Unlock()
+
+	EK := tpm.getEK()
 	tpm.ekHandle = EK.Handle()
-
 	defer EK.Close()
-	var pemEKCert []byte
 
+	var pemEKCert []byte
 	EKCert := EK.Cert()
 	if EKCert != nil {
 		pemEKCert = pem.EncodeToMemory(&pem.Block{
@@ -128,21 +148,8 @@ func (tpm *TPM) GetEKCertificate() ([]byte, error) {
 func (tpm *TPM) GetEKandCertificate() ([]byte, []byte, error) {
 	tpm.mtx.Lock()
 	defer tpm.mtx.Unlock()
-	var EK *client.Key
-	var err error
 
-	switch tpm.KeyType {
-	case RSA:
-		EK, err = client.EndorsementKeyRSA(tpm.rwc)
-	case ECC:
-		EK, err = client.EndorsementKeyECC(tpm.rwc)
-	default:
-		return nil, nil, fmt.Errorf("unsupported key type: %s", tpm.KeyType.String())
-	}
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to get EK: %v", err)
-	}
-
+	EK := tpm.getEK()
 	tpm.ekHandle = EK.Handle()
 	defer EK.Close()
 
@@ -171,24 +178,9 @@ func (tpm *TPM) CreateAIK() ([]byte, []byte, error) {
 	tpm.mtx.Lock()
 	defer tpm.mtx.Unlock()
 
-	var AIK *client.Key
-	var err error
-
-	switch tpm.KeyType {
-	case RSA:
-		AIK, err = client.AttestationKeyRSA(tpm.rwc)
-	case ECC:
-		AIK, err = client.AttestationKeyECC(tpm.rwc)
-	default:
-		return nil, nil, fmt.Errorf("unsupported key type: %s", tpm.KeyType.String())
-	}
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to create %s AIK: %v", tpm.KeyType, err)
-	}
-	defer AIK.Close()
-
+	AIK := tpm.getAIK()
 	tpm.aikHandle = AIK.Handle()
+	defer AIK.Close()
 
 	AIKNameData, err := AIK.Name().Encode()
 	if err != nil {
@@ -232,20 +224,7 @@ func (tpm *TPM) QuoteGeneralPurposePCRs(nonce []byte, pcrSet []int) ([]byte, err
 		PCRs: pcrSet,
 	}
 
-	var AIK *client.Key
-	var err error
-	switch tpm.KeyType {
-	case RSA:
-		AIK, err = client.NewCachedKey(tpm.rwc, tpm2legacy.HandleOwner, client.AKTemplateRSA(), tpm.aikHandle)
-	case ECC:
-		AIK, err = client.NewCachedKey(tpm.rwc, tpm2legacy.HandleOwner, client.AKTemplateECC(), tpm.aikHandle)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("error while retrieving AIK: %v", err)
-	}
-	if AIK == nil {
-		return nil, fmt.Errorf("cannot quote general purpose PCRs: no AIK found")
-	}
+	AIK := tpm.getAIK()
 	defer AIK.Close()
 
 	quote, err := AIK.Quote(generalPurposePcrSet, nonce)
@@ -268,20 +247,7 @@ func (tpm *TPM) QuoteBootPCRs(nonce []byte) ([]byte, error) {
 		PCRs: bootReservedPCRs,
 	}
 
-	var AIK *client.Key
-	var err error
-	switch tpm.KeyType {
-	case RSA:
-		AIK, err = client.NewCachedKey(tpm.rwc, tpm2legacy.HandleOwner, client.AKTemplateRSA(), tpm.aikHandle)
-	case ECC:
-		AIK, err = client.NewCachedKey(tpm.rwc, tpm2legacy.HandleOwner, client.AKTemplateECC(), tpm.aikHandle)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("error while retrieving AIK: %v", err)
-	}
-	if AIK == nil {
-		return nil, fmt.Errorf("cannot quote general purpose PCRs: no AIK found")
-	}
+	AIK := tpm.getAIK()
 	defer AIK.Close()
 
 	quote, err := AIK.Quote(bootPCRs, nonce)
@@ -332,6 +298,66 @@ func (tpm *TPM) ActivateAIKCredential(aikCredential, aikEncryptedSecret []byte) 
 	return challengeSecret, nil
 }
 
+func (tpm *TPM) SignEvidenceWithAIK(issuer string, evidence *Evidence) (string, error) {
+	tpm.mtx.Lock()
+	defer tpm.mtx.Unlock()
+
+	if tpm.aikHandle.HandleValue() == 0 {
+		return "", fmt.Errorf("AIK is not already created")
+	}
+
+	AIK := tpm.getAIK()
+	defer AIK.Close()
+
+	// Step 1: Marshal the CMW claims
+	cmwJSON, err := evidence.MarshalClaimsJSON()
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal CMW: %w", err)
+	}
+
+	// Step 2: Parse CMW to map
+	var cmwMap map[string]any
+	if err = json.Unmarshal(cmwJSON, &cmwMap); err != nil {
+		return "", fmt.Errorf("failed to unmarshal CMW JSON: %w", err)
+	}
+
+	// Step 3: Create the JWT claims
+	claims := jwt.MapClaims{
+		"iss": issuer,
+		"exp": time.Now().Add(3 * time.Minute).Unix(),
+		"cmw": cmwMap,
+	}
+
+	// Step 4: Create the JWT token (algorithm depends on key type)
+	var token *jwt.Token
+	var signingMethod jwt.SigningMethod
+
+	switch tpm.KeyType {
+	case ECC:
+		signingMethod = jwt.SigningMethodES256
+	case RSA:
+		signingMethod = jwt.SigningMethodRS256
+	default:
+		return "", fmt.Errorf("unsupported key type: %s", tpm.KeyType.String())
+	}
+
+	token = jwt.NewWithClaims(signingMethod, claims)
+
+	signingString, err := token.SigningString()
+	if err != nil {
+		return "", fmt.Errorf("failed to create JWT signing string: %w", err)
+	}
+
+	sigBytes, err := AIK.SignData([]byte(signingString))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign with AIK: %v", err)
+	}
+
+	sigEncoded := base64.RawURLEncoding.EncodeToString(sigBytes)
+	signedEvidenceJWT := signingString + "." + sigEncoded
+	return signedEvidenceJWT, nil
+}
+
 func (tpm *TPM) SignWithAIK(message []byte) ([]byte, error) {
 	tpm.mtx.Lock()
 	defer tpm.mtx.Unlock()
@@ -342,9 +368,8 @@ func (tpm *TPM) SignWithAIK(message []byte) ([]byte, error) {
 
 	AIK, err := client.NewCachedKey(tpm.rwc, tpm2legacy.HandleOwner, client.AKTemplateRSA(), tpm.aikHandle)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve AIK from TPM")
+		return nil, fmt.Errorf("failed to retrieve AIK from TPM: %v", err)
 	}
-
 	defer AIK.Close()
 
 	aikSigned, err := AIK.SignData(message)
@@ -352,30 +377,4 @@ func (tpm *TPM) SignWithAIK(message []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to sign with AIK: %v", err)
 	}
 	return aikSigned, nil
-}
-
-func Hash(message []byte) ([]byte, error) {
-	// Compute SHA256 hash
-	hash := sha256.New()
-	_, err := hash.Write(message)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compute hash: %v", err)
-	}
-	// Get the final hash as a hex-encoded string
-	digest := hash.Sum(nil)
-	return digest, nil
-}
-
-// Generate a cryptographically secure random symmetric key of the specified size in bytes
-func GenerateEphemeralKey(size int) ([]byte, error) {
-	if size <= 0 {
-		return nil, fmt.Errorf("key size must be greater than 0")
-	}
-
-	key := make([]byte, size)
-	_, err := rand.Read(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate random key: %v", err)
-	}
-	return key, nil
 }

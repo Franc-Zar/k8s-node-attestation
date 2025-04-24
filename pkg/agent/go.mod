@@ -3,20 +3,21 @@ module github.com/franc-zar/k8s-node-attestation/pkg/agent
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250423213236-ed6bb11ae4d6
-	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250423213236-ed6bb11ae4d6
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250423213236-ed6bb11ae4d6
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250423213236-ed6bb11ae4d6
+	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250423222016-5c40527bc21f
+	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250423222016-5c40527bc21f
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250423222016-5c40527bc21f
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250423222016-5c40527bc21f
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
+	github.com/veraison/cmw v0.1.2-0.20250416174706-f0477216c7b0
 )
 
 require (
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
-	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.8.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
@@ -40,6 +41,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.16.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
