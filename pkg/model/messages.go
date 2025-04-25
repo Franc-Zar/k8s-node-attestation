@@ -3,13 +3,6 @@ package model
 const Success = "success"
 const Error = "error"
 
-type WorkerCredentialsResponse struct {
-	UUID          string `json:"UUID"`
-	EKCert        string `json:"EKCert"`
-	AIKNameData   string `json:"AIKNameData"`
-	AIKPublicArea string `json:"AIKPublicArea"`
-}
-
 type SimpleResponse struct {
 	Message string `json:"message"`
 	Status  string `json:"status"`
@@ -44,6 +37,13 @@ type AIKCnf struct {
 	KID string   `json:"kid"` // UUID of the worker
 	X5C []string `json:"x5c"` // EK certificate chain (usually just one cert)
 	AIK AIKInfo  `json:"aik"` // AIK information (Name and Public Area)
+}
+
+type CredentialsResponse struct {
+	CNF AIKCnf `json:"cnf"`
+	Iat int64  `json:"iat"` // Issued at timestamp
+	Nbf int64  `json:"nbf"` // Not before timestamp
+	Exp int64  `json:"exp"` // Expiration timestamp
 }
 
 type CredentialActivationChallenge struct {
