@@ -8,19 +8,6 @@ type SimpleResponse struct {
 	Status  string `json:"status"`
 }
 
-type WorkerChallenge struct {
-	AIKCredential      string `json:"AIKCredential"`
-	AIKEncryptedSecret string `json:"AIKEncryptedSecret"`
-}
-
-type WorkerChallengeResponse struct {
-	Message   string `json:"message"`
-	Status    string `json:"status"`
-	HMAC      string `json:"hmac"`
-	Salt      string `json:"salt"`
-	BootQuote string `json:"bootQuote"`
-}
-
 type WorkerAttestationRequest struct {
 	Nonce    string `json:"nonce"`
 	NodeUUID string `json:"nodeUUID"`
@@ -39,7 +26,7 @@ type AIKCnf struct {
 	AIK AIKInfo  `json:"aik"` // AIK information (Name and Public Area)
 }
 
-type CredentialsResponse struct {
+type CredentialResponse struct {
 	CNF AIKCnf `json:"cnf"`
 	Iat int64  `json:"iat"` // Issued at timestamp
 	Nbf int64  `json:"nbf"` // Not before timestamp
@@ -64,10 +51,20 @@ type CredentialActivationRequest struct {
 	Exp int64                   `json:"exp"` // Expiration timestamp
 }
 
-// CredentialChallengeResponse represents the response structure for credential activation challenge.
-type CredentialChallengeResponse struct {
-	CNF AIKCnf `json:"cnf"` // CNF data containing worker's key information
-	Iat int64  `json:"iat"` // Issued at timestamp
-	Nbf int64  `json:"nbf"` // Not before timestamp
-	Exp int64  `json:"exp"` // Expiration timestamp
+type ChallengeSolutionCnf struct {
+	KID   string `json:"kid"` // UUID of the worker
+	Proof Proof  `json:"proof"`
+}
+
+type Proof struct {
+	Quote string `json:"quote"`
+	HMAC  string `json:"hmac"`
+}
+
+// CredentialActivationResponse represents the response structure for credential activation challenge.
+type CredentialActivationResponse struct {
+	CNF ChallengeSolutionCnf `json:"cnf"` // CNF data containing worker's key information
+	Iat int64                `json:"iat"` // Issued at timestamp
+	Nbf int64                `json:"nbf"` // Not before timestamp
+	Exp int64                `json:"exp"` // Expiration timestamp
 }
