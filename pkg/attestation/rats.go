@@ -18,7 +18,7 @@ const (
 const (
 	BootQuoteClaimKey         = "bootQuote"
 	IMAMeasurementLogClaimKey = "imaMeasurementLog"
-	IMAPcrQuote               = "imaPcrQuote"
+	IMAPcrQuoteClaimKey       = "imaPcrQuote"
 )
 
 type Evidence struct {

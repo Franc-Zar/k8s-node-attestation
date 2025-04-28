@@ -11,8 +11,28 @@ type SimpleResponse struct {
 }
 
 type WorkerAttestationRequest struct {
-	Nonce    string `json:"nonce"`
-	NodeUUID string `json:"nodeUUID"`
+	CNF AttestationRequestCnf `json:"cnf"`
+	Iat int64                 `json:"iat"` // Issued at timestamp
+	Nbf int64                 `json:"nbf"` // Not before timestamp
+	Exp int64                 `json:"exp"` // Expiration timestamp
+}
+
+type WorkerAttestationResponse struct {
+	CNF AttestationResponseCnf `json:"cnf"`
+	CMW json.RawMessage        `json:"cmw"` // RATS CMW including as claims quote over ima pcr and ima measurement log content
+	Iat int64                  `json:"iat"` // Issued at timestamp
+	Nbf int64                  `json:"nbf"` // Not before timestamp
+	Exp int64                  `json:"exp"` // Expiration timestamp
+}
+
+// AttestationRequestCnf is the CNF associated to an attestation request
+type AttestationRequestCnf struct {
+	KID   string `json:"kid"` // UUID of the worker
+	Nonce string `json:"nonce"`
+}
+
+type AttestationResponseCnf struct {
+	KID string `json:"kid"` // The AIK key identifier
 }
 
 // AIKInfo represents the AIK information (Name and Public Area) for the worker.

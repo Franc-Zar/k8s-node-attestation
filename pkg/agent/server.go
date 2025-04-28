@@ -167,7 +167,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 		})
 	}
 
-	err = credentialActivationEvidence.AddClaim("bootQuote", bootQuoteClaim)
+	err = credentialActivationEvidence.AddClaim(attestation.BootQuoteClaimKey, bootQuoteClaim)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
 			Message: "Failed to add boot quote to credential activation evidence ",
@@ -175,7 +175,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 		})
 	}
 
-	marshaledEvidence, err := credentialActivationEvidence.MarshalClaimsJSON()
+	evidenceJSON, err := credentialActivationEvidence.ToJSON()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
 			Message: "Failed to marshal evidence to JSON",
@@ -186,19 +186,15 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	// Compute HMAC on the worker UUID using the ephemeral key
 	challengeHmac := cryptoUtils.ComputeHMAC([]byte(s.workerId), ephemeralKey)
 	encodedChallengeHmac := base64.StdEncoding.EncodeToString(challengeHmac)
-	encodedBootQuote := base64.StdEncoding.EncodeToString(bootQuoteJSON)
 
 	currentTime := time.Now()
-
 	// Respond with success, including the HMAC of the UUID
 	c.JSON(http.StatusOK, model.CredentialActivationResponse{
 		CNF: model.ChallengeSolutionCnf{
-			KID: s.workerId,
-			Proof: model.Proof{
-				Quote: encodedBootQuote,
-				HMAC:  encodedChallengeHmac,
-			},
+			KID:  s.workerId,
+			HMAC: encodedChallengeHmac,
 		},
+		CMW: evidenceJSON,
 		Iat: currentTime.Unix(),
 		Nbf: currentTime.Unix(),
 		Exp: currentTime.Add(3 * time.Minute).Unix(),
@@ -246,8 +242,6 @@ func (s *Server) workerAttestation(c *gin.Context) {
 		return
 	}
 
-	encodedQuote := base64.StdEncoding.EncodeToString(workerQuote)
-
 	measurementLog, err := s.getWorkerMeasurementLog()
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, model.SimpleResponse{
@@ -257,28 +251,73 @@ func (s *Server) workerAttestation(c *gin.Context) {
 		return
 	}
 
-	evidence := cmw.NewCollection()
+	attestationEvidence, err := attestation.NewEvidence(attestation.CmwCollectionTypeAttestationEvidence)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Agent failed to generate attestation evidence",
+			Status:  model.Error,
+		})
+	}
+
+	quoteClaim, err := attestation.NewClaim(attestation.EatJsonClaimMediaType, workerQuote, cmw.Evidence)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Agent failed to generate quote claim",
+			Status:  model.Error,
+		})
+	}
+
+	measurementLogClaim, err := attestation.NewClaim(attestation.EatJsonClaimMediaType, measurementLog, cmw.Evidence)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Agent failed to generate measurement log claim",
+			Status:  model.Error,
+		})
+	}
+
+	err = attestationEvidence.AddClaim(attestation.IMAPcrQuote, quoteClaim)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Agent failed to add quote claim to attestation evidence",
+			Status:  model.Error,
+		})
+	}
+
+	err = attestationEvidence.AddClaim(attestation.IMAMeasurementLogClaimKey, measurementLogClaim)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Agent failed to add measurement log claim to attestation evidence",
+			Status:  model.Error,
+		})
+	}
+
+	evidenceJSON, err := attestationEvidence.ToJSON()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Agent failed to marshal attestation evidence to JSON",
+			Status:  model.Error,
+		})
+	}
 
 }
 
-func (s *Server) getWorkerMeasurementLog() (string, error) {
+func (s *Server) getWorkerMeasurementLog() ([]byte, error) {
 	// Open the file
 	imaMeasurementLog, err := os.Open(s.imaMeasurementLogPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open IMA measurement log: %v", err)
+		return nil, fmt.Errorf("failed to open IMA measurement log: %v", err)
 	}
 
-	fileContent, err := io.ReadAll(imaMeasurementLog)
+	measurementLogContent, err := io.ReadAll(imaMeasurementLog)
 	if err != nil {
-		return "", fmt.Errorf("failed to read file: %v", err)
+		return nil, fmt.Errorf("failed to read file: %v", err)
 	}
 
 	err = imaMeasurementLog.Close()
 	if err != nil {
-		return "", fmt.Errorf("failed to close IMA measurement log: %v", err)
+		return nil, fmt.Errorf("failed to close IMA measurement log: %v", err)
 	}
-	base64Encoded := base64.StdEncoding.EncodeToString(fileContent)
-	return base64Encoded, nil
+	return measurementLogContent, nil
 }
 
 func (s *Server) Start() {
