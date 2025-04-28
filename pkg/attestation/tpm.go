@@ -310,7 +310,7 @@ func (tpm *TPM) SignEvidenceWithAIK(issuer string, evidence *Evidence) (string, 
 	defer AIK.Close()
 
 	// Step 1: Marshal the CMW claims
-	cmwJSON, err := evidence.MarshalClaimsJSON()
+	cmwJSON, err := evidence.MarshalEvidenceJSON()
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal CMW: %w", err)
 	}

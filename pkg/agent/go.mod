@@ -3,10 +3,10 @@ module github.com/franc-zar/k8s-node-attestation/pkg/agent
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250428091503-56bef6f220ae
-	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250428091503-56bef6f220ae
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250428091503-56bef6f220ae
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250428091503-56bef6f220ae
+	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250428105259-20ba40dbf9cf
+	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250428105259-20ba40dbf9cf
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250428105259-20ba40dbf9cf
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250428105259-20ba40dbf9cf
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/veraison/cmw v0.1.2-0.20250416174706-f0477216c7b0

@@ -151,6 +151,38 @@ func (s *Server) challengeWorker(c *gin.Context) {
 		return
 	}
 
+	bootQuoteClaim, err := attestation.NewClaim(attestation.EatJsonClaimMediaType, bootQuoteJSON, cmw.Evidence)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Failed to create claim from boot quote",
+			Status:  model.Error,
+		})
+	}
+
+	credentialActivationEvidence, err := attestation.NewEvidence(attestation.CmwCollectionTypeCredentialActivationEvidence)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Failed to create evidence for credential activation",
+			Status:  model.Error,
+		})
+	}
+
+	err = credentialActivationEvidence.AddClaim("bootQuote", bootQuoteClaim)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Failed to add boot quote to credential activation evidence ",
+			Status:  model.Error,
+		})
+	}
+
+	marshaledEvidence, err := credentialActivationEvidence.MarshalClaimsJSON()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
+			Message: "Failed to marshal evidence to JSON",
+			Status:  model.Error,
+		})
+	}
+
 	// Compute HMAC on the worker UUID using the ephemeral key
 	challengeHmac := cryptoUtils.ComputeHMAC([]byte(s.workerId), ephemeralKey)
 	encodedChallengeHmac := base64.StdEncoding.EncodeToString(challengeHmac)

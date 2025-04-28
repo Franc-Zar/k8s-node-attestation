@@ -68,7 +68,6 @@ func (w *WorkerHandler) WatchNodes() {
 }
 
 func (w *WorkerHandler) registerNode(node *corev1.Node) {
-
 	_, _, err := registrar.RegisterNodeCommand()
 }
 

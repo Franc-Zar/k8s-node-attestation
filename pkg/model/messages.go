@@ -1,5 +1,7 @@
 package model
 
+import "encoding/json"
+
 const Success = "success"
 const Error = "error"
 
@@ -59,7 +61,7 @@ type ChallengeSolutionCnf struct {
 // CredentialActivationResponse represents the response structure for credential activation challenge.
 type CredentialActivationResponse struct {
 	CNF ChallengeSolutionCnf `json:"cnf"` // CNF data containing worker's key information
-	CMW string               `json:"cmw"` // rats Evidence including the quote computed using the newly activated aik
+	CMW json.RawMessage      `json:"cmw"` // RATS CMW including the quote computed using the newly activated aik
 	Iat int64                `json:"iat"` // Issued at timestamp
 	Nbf int64                `json:"nbf"` // Not before timestamp
 	Exp int64                `json:"exp"` // Expiration timestamp
