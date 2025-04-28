@@ -6,6 +6,7 @@ import (
 )
 
 const CmwCollectionTypeAttestationEvidence = "tag:attestation.com,2025:attestation-evidence"
+const CmwCollectionTypeCredentialActivationEvidence = "tag:attestation.com,2025:credential-activation-evidence"
 
 const (
 	EatJWTMediaType       = "application/eat+jwt"
@@ -18,10 +19,10 @@ type Evidence struct {
 	claims *cmw.CMW
 }
 
-func NewEvidence() (*Evidence, error) {
+func NewEvidence(cmwCollectionType string) (*Evidence, error) {
 	var err error
 	newEvidence := &Evidence{}
-	newEvidence.claims, err = cmw.NewCollection(CmwCollectionTypeAttestationEvidence)
+	newEvidence.claims, err = cmw.NewCollection(cmwCollectionType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize attestation evidence: %w", err)
 	}
@@ -52,7 +53,7 @@ func (e *Evidence) GetClaim(key any) (*cmw.CMW, error) {
 	return claim, nil
 }
 
-func (e *Evidence) MarshalClaimsJSON() ([]byte, error) {
+func (e *Evidence) MarshalEvidenceJSON() ([]byte, error) {
 	evidenceJSON, err := e.claims.MarshalJSON()
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal claims of attestation evidence: %w", err)
@@ -60,7 +61,7 @@ func (e *Evidence) MarshalClaimsJSON() ([]byte, error) {
 	return evidenceJSON, nil
 }
 
-func (e *Evidence) UnmarshalClaimsJSON(jsonClaims []byte) error {
+func (e *Evidence) UnmarshalEvidenceJSON(jsonClaims []byte) error {
 	err := e.claims.UnmarshalJSON(jsonClaims)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal claims into attestation evidence: %w", err)

@@ -52,18 +52,14 @@ type CredentialActivationRequest struct {
 }
 
 type ChallengeSolutionCnf struct {
-	KID   string `json:"kid"` // UUID of the worker
-	Proof Proof  `json:"proof"`
-}
-
-type Proof struct {
-	Quote string `json:"quote"`
-	HMAC  string `json:"hmac"`
+	KID  string `json:"kid"`  // UUID of the worker
+	HMAC string `json:"hmac"` // HMAC computed using the activate credential challenge secret
 }
 
 // CredentialActivationResponse represents the response structure for credential activation challenge.
 type CredentialActivationResponse struct {
 	CNF ChallengeSolutionCnf `json:"cnf"` // CNF data containing worker's key information
+	CMW string               `json:"cmw"` // rats Evidence including the quote computed using the newly activated aik
 	Iat int64                `json:"iat"` // Issued at timestamp
 	Nbf int64                `json:"nbf"` // Not before timestamp
 	Exp int64                `json:"exp"` // Expiration timestamp

@@ -3,10 +3,10 @@ module github.com/franc-zar/k8s-node-attestation/pkg/agent
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250423222016-5c40527bc21f
-	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250423222016-5c40527bc21f
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250423222016-5c40527bc21f
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250423222016-5c40527bc21f
+	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250428091503-56bef6f220ae
+	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250428091503-56bef6f220ae
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250428091503-56bef6f220ae
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250428091503-56bef6f220ae
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/veraison/cmw v0.1.2-0.20250416174706-f0477216c7b0
@@ -24,6 +24,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/google/go-attestation v0.5.1 // indirect
 	github.com/google/go-configfs-tsm v0.3.3-0.20240919001351-b4b5b84fdcbc // indirect
 	github.com/google/go-sev-guest v0.13.0 // indirect

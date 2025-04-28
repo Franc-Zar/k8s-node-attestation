@@ -9,12 +9,12 @@ import (
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/veraison/cmw"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 const (
@@ -35,17 +35,16 @@ type Server struct {
 	workerId              string
 }
 
-func New(tpm *attestation.TPM, tlsCertificate *x509.Certificate, rootCaCert *x509.Certificate) *Server {
+func New(tpm *attestation.TPM, tlsCertificate *x509.Certificate, rootCaCert *x509.Certificate, workerId string) *Server {
 	newServer := &Server{}
 	newServer.tpm = tpm
 	newServer.tlsCertificate = tlsCertificate
 	newServer.rootCaCert = rootCaCert
+	newServer.workerId = workerId
 	return newServer
 }
 
 func (s *Server) getWorkerRegistrationCredentials(c *gin.Context) {
-	s.workerId = uuid.New().String()
-
 	ekCert, err := s.tpm.GetEKCertificate()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
@@ -65,31 +64,54 @@ func (s *Server) getWorkerRegistrationCredentials(c *gin.Context) {
 	encodedEkCert := base64.StdEncoding.EncodeToString(ekCert)
 	encodedAikNameData := base64.StdEncoding.EncodeToString(aikNameData)
 	encodedAikPublicArea := base64.StdEncoding.EncodeToString(aikPublicArea)
-	c.JSON(http.StatusOK, model.WorkerCredentialsResponse{UUID: s.workerId, EKCert: encodedEkCert, AIKNameData: encodedAikNameData, AIKPublicArea: encodedAikPublicArea})
+
+	currentTime := time.Now()
+
+	c.JSON(http.StatusOK, model.CredentialResponse{
+		CNF: model.AIKCnf{
+			KID: s.workerId,
+			X5C: []string{encodedEkCert},
+			AIK: model.AIKInfo{
+				Name:       encodedAikNameData,
+				PublicArea: encodedAikPublicArea,
+			},
+		},
+		Iat: currentTime.Unix(),
+		Nbf: currentTime.Unix(),
+		Exp: currentTime.Add(3 * time.Minute).Unix(),
+	})
 }
 
 func (s *Server) challengeWorker(c *gin.Context) {
-	var workerChallenge model.WorkerChallenge
+	var aikActivationChallenge model.CredentialActivationRequest
 	// Bind the JSON request body to the struct
-	if err := c.BindJSON(&workerChallenge); err != nil {
+	if err := c.BindJSON(&aikActivationChallenge); err != nil {
 		c.JSON(http.StatusBadRequest, model.SimpleResponse{
 			Message: "Invalid request payload",
 			Status:  model.Error,
 		})
 		return
 	}
-	aikCredential, err := base64.StdEncoding.DecodeString(workerChallenge.AIKCredential)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, model.SimpleResponse{
-			Message: "failed to decode aik credential from base64",
+
+	if s.workerId != aikActivationChallenge.CNF.KID {
+		c.JSON(http.StatusUnauthorized, model.SimpleResponse{
+			Message: "KID does not match AIK owning Worker identifier",
 			Status:  model.Error,
 		})
 	}
 
-	aikEncryptedSecret, err := base64.StdEncoding.DecodeString(workerChallenge.AIKEncryptedSecret)
+	aikCredential, err := base64.StdEncoding.DecodeString(aikActivationChallenge.CNF.Challenge.CredentialBlob)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, model.SimpleResponse{
-			Message: "failed to decode aik encrypted secret from base64",
+			Message: "failed to decode AIK credential from base64",
+			Status:  model.Error,
+		})
+	}
+
+	aikEncryptedSecret, err := base64.StdEncoding.DecodeString(aikActivationChallenge.CNF.Challenge.CredentialBlob)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, model.SimpleResponse{
+			Message: "failed to decode AIK encrypted secret from base64",
 			Status:  model.Error,
 		})
 		return
@@ -98,16 +120,16 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	ephemeralKey, err := s.tpm.ActivateAIKCredential(aikCredential, aikEncryptedSecret)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, model.SimpleResponse{
-			Message: "Agent failed to perform Credential Activation",
+			Message: "Agent failed to perform AIK Credential Activation",
 			Status:  model.Error,
 		})
 		return
 	}
 
-	salt, err := cryptoUtils.GenerateRandSequence(32)
+	salt, err := base64.StdEncoding.DecodeString(aikActivationChallenge.CNF.Challenge.Salt)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
-			Message: "Agent failed to generate salt",
+		c.JSON(http.StatusBadRequest, model.SimpleResponse{
+			Message: "Failed to decode challenge salt from base64",
 			Status:  model.Error,
 		})
 	}
@@ -115,7 +137,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	quoteNonce, err := cryptoUtils.ComputeHKDF(ephemeralKey, salt, cryptoUtils.NonceDerivationInfo, 8)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
-			Message: "Agent failed to compute quote nonce",
+			Message: "Failed to compute quote nonce",
 			Status:  model.Error,
 		})
 	}
@@ -133,15 +155,21 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	challengeHmac := cryptoUtils.ComputeHMAC([]byte(s.workerId), ephemeralKey)
 	encodedChallengeHmac := base64.StdEncoding.EncodeToString(challengeHmac)
 	encodedBootQuote := base64.StdEncoding.EncodeToString(bootQuoteJSON)
-	encodedSalt := base64.StdEncoding.EncodeToString(salt)
+
+	currentTime := time.Now()
 
 	// Respond with success, including the HMAC of the UUID
-	c.JSON(http.StatusOK, model.WorkerChallengeResponse{
-		Message:   "Worker registration challenge decrypted and verified successfully",
-		Status:    model.Success,
-		HMAC:      encodedChallengeHmac,
-		Salt:      encodedSalt,
-		BootQuote: encodedBootQuote,
+	c.JSON(http.StatusOK, model.CredentialActivationResponse{
+		CNF: model.ChallengeSolutionCnf{
+			KID: s.workerId,
+			Proof: model.Proof{
+				Quote: encodedBootQuote,
+				HMAC:  encodedChallengeHmac,
+			},
+		},
+		Iat: currentTime.Unix(),
+		Nbf: currentTime.Unix(),
+		Exp: currentTime.Add(3 * time.Minute).Unix(),
 	})
 	return
 }
