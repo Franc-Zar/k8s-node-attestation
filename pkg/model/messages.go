@@ -17,12 +17,12 @@ type WorkerAttestationRequest struct {
 	Exp int64                 `json:"exp"` // Expiration timestamp
 }
 
-type WorkerAttestationResponse struct {
-	CNF AttestationResponseCnf `json:"cnf"`
-	CMW json.RawMessage        `json:"cmw"` // RATS CMW including as claims quote over ima pcr and ima measurement log content
-	Iat int64                  `json:"iat"` // Issued at timestamp
-	Nbf int64                  `json:"nbf"` // Not before timestamp
-	Exp int64                  `json:"exp"` // Expiration timestamp
+type WorkerAttestation struct {
+	CNF AttestationCnf  `json:"cnf"`
+	CMW json.RawMessage `json:"cmw"` // RATS CMW including as claims quote over ima pcr and ima measurement log content
+	Iat int64           `json:"iat"` // Issued at timestamp
+	Nbf int64           `json:"nbf"` // Not before timestamp
+	Exp int64           `json:"exp"` // Expiration timestamp
 }
 
 // AttestationRequestCnf is the CNF associated to an attestation request
@@ -31,7 +31,7 @@ type AttestationRequestCnf struct {
 	Nonce string `json:"nonce"`
 }
 
-type AttestationResponseCnf struct {
+type AttestationCnf struct {
 	KID string `json:"kid"` // The AIK key identifier
 }
 
@@ -80,17 +80,30 @@ type ChallengeSolutionCnf struct {
 
 // CredentialActivationResponse represents the response structure for credential activation challenge.
 type CredentialActivationResponse struct {
-	CNF ChallengeSolutionCnf `json:"cnf"` // CNF data containing worker's key information
-	CMW json.RawMessage      `json:"cmw"` // RATS CMW including the quote computed using the newly activated aik
-	CSR string               `json:"csr"` // base64 encoded pem certificate of the CSR for the TLS certificate needed by the Agent to establish mTLS with Verifier
-	Iat int64                `json:"iat"` // Issued at timestamp
-	Nbf int64                `json:"nbf"` // Not before timestamp
-	Exp int64                `json:"exp"` // Expiration timestamp
+	CNF                ChallengeSolutionCnf `json:"cnf"`                // CNF data containing worker's key information
+	CMW                json.RawMessage      `json:"cmw"`                // RATS CMW including the quote computed using the newly activated aik
+	CertificateRequest CertificateRequest   `json:"certificateRequest"` //
+	Iat                int64                `json:"iat"`                // Issued at timestamp
+	Nbf                int64                `json:"nbf"`                // Not before timestamp
+	Exp                int64                `json:"exp"`                // Expiration timestamp
 }
 
-type AcknowledgeWorkerRegistration struct {
-	X5C []string `json:"x5c"` // EK certificate chain (usually just one cert)
+type CertificateRequest struct {
+	CSR  string `json:"csr"` // base64 encoded CSR for the TLS certificate needed by the Agent to establish mTLS with Verifier
+	HMAC string `json:"hmac"`
+}
+
+type NewCert struct {
+	X5C []string `json:"x5c"` // certificate chain (usually just one cert)
 	Iat int64    `json:"iat"` // Issued at timestamp
 	Nbf int64    `json:"nbf"` // Not before timestamp
 	Exp int64    `json:"exp"` // Expiration timestamp
+}
+
+type AcknowledgeRegistrationResponse struct {
+	AcknowledgeToken string `json:"acknowledgeToken"` // JWE of NewCert
+}
+
+type AttestationResponse struct {
+	AttestationToken string `json:"attestationToken"` // JWS of WorkerAttestation
 }
