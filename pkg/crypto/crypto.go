@@ -3,18 +3,22 @@ package crypto
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	x509ext "github.com/google/go-attestation/x509"
 	"github.com/google/go-tpm/tpmutil"
 	"golang.org/x/crypto/hkdf"
+	"gopkg.in/square/go-jose.v2"
 	"io"
 	"math/big"
 	"strings"
@@ -25,6 +29,172 @@ var SANoid = asn1.ObjectIdentifier{2, 5, 29, 17} // OID for subjectAltName
 var EKCertificateOid = asn1.ObjectIdentifier{2, 23, 133, 8, 1}
 
 var NonceDerivationInfo = []byte("nonce-derivation")
+
+// GenerateRSAKey generates an RSA private key
+func GenerateRSAKey(bits int) (*rsa.PrivateKey, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate RSA key: %w", err)
+	}
+	return privateKey, nil
+}
+
+// GenerateECDSAKey generates an ECDSA private key with the P-256 curve
+func GenerateECDSAKey() (*ecdsa.PrivateKey, error) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate ECDSA key: %w", err)
+	}
+	return privateKey, nil
+}
+
+// PEMToBase64DER converts a PEM-encoded certificate to base64 DER string for use in JWT x5c.
+func PEMToBase64DER(pemCert []byte) (string, error) {
+	block, _ := pem.Decode(pemCert)
+	if block == nil || block.Type != "CERTIFICATE" {
+		return "", fmt.Errorf("failed to decode PEM block or wrong type")
+	}
+
+	// Parse to validate
+	if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+		return "", fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	// Encode the DER bytes as standard base64 (not URL encoding)
+	base64DER := base64.StdEncoding.EncodeToString(block.Bytes)
+	return base64DER, nil
+}
+
+// Base64DERToPEM takes a base64 DER certificate (as in x5c) and returns a PEM-encoded certificate.
+func Base64DERToPEM(base64DER string) ([]byte, error) {
+	derBytes, err := base64.StdEncoding.DecodeString(base64DER)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 DER: %w", err)
+	}
+
+	pemBlock := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: derBytes,
+	}
+
+	pemBytes := pem.EncodeToMemory(pemBlock)
+	return pemBytes, nil
+}
+
+// LoadCertFromBase64DER decodes a base64-encoded DER certificate and parses it into *x509.Certificate
+func LoadCertFromBase64DER(base64DER string) (*x509.Certificate, error) {
+	derBytes, err := base64.StdEncoding.DecodeString(base64DER)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 DER: %w", err)
+	}
+
+	cert, err := x509.ParseCertificate(derBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	return cert, nil
+}
+
+// CreateCSR generates a CSR (Certificate Signing Request) using the provided private key
+func CreateCSR(privateKey crypto.PrivateKey, commonName string) ([]byte, error) {
+	// Define the CSR template
+	csrTemplate := &x509.CertificateRequest{
+		Subject: pkix.Name{CommonName: commonName},
+	}
+
+	var csrDER []byte
+	var err error
+
+	// Dynamically set the signature algorithm based on the private key type
+	switch key := privateKey.(type) {
+	case *rsa.PrivateKey:
+		csrTemplate.SignatureAlgorithm = x509.SHA256WithRSA
+		csrDER, err = x509.CreateCertificateRequest(rand.Reader, csrTemplate, key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create RSA CSR: %w", err)
+		}
+	case *ecdsa.PrivateKey:
+		csrTemplate.SignatureAlgorithm = x509.ECDSAWithSHA256
+		csrDER, err = x509.CreateCertificateRequest(rand.Reader, csrTemplate, key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ECDSA CSR: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported key type: %T", privateKey)
+	}
+
+	// Encode the CSR in PEM format
+	csrPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE REQUEST",
+		Bytes: csrDER,
+	})
+
+	return csrPEM, nil
+}
+
+// DecryptJWT takes a compact-serialized JWE and the recipient's private key, and returns the decrypted payload.
+func DecryptJWT(jweCompact string, privateKey crypto.PrivateKey) ([]byte, error) {
+	jwe, err := jose.ParseEncrypted(jweCompact)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JWE: %w", err)
+	}
+
+	var plaintext []byte
+	switch key := privateKey.(type) {
+	case *rsa.PrivateKey:
+		plaintext, err = jwe.Decrypt(key)
+	case *ecdsa.PrivateKey:
+		plaintext, err = jwe.Decrypt(key)
+	default:
+		return nil, fmt.Errorf("unsupported private key type: %T", privateKey)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt JWE: %w", err)
+	}
+
+	return plaintext, nil
+}
+
+// EncryptJWT encrypts a byte-encoded JWT using the given public key.
+// The public key is used to encrypt a symmetric key, which encrypts the JWT.
+func EncryptJWT(payload []byte, pubKey crypto.PublicKey) (string, error) {
+	var recipient jose.Recipient
+	var alg jose.KeyAlgorithm
+
+	switch key := pubKey.(type) {
+	case *rsa.PublicKey:
+		alg = jose.RSA_OAEP_256
+		recipient = jose.Recipient{
+			Algorithm: alg,
+			Key:       key,
+		}
+	case *ecdsa.PublicKey:
+		alg = jose.ECDH_ES_A256KW
+		recipient = jose.Recipient{
+			Algorithm: alg,
+			Key:       key,
+		}
+	default:
+		return "", fmt.Errorf("unsupported public key type: %T", pubKey)
+	}
+
+	encrypter, err := jose.NewEncrypter(
+		jose.A256GCM, // AES-256-GCM for content encryption
+		recipient,
+		(&jose.EncrypterOptions{}).WithContentType("JWT"),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create encrypter: %w", err)
+	}
+
+	jwe, err := encrypter.Encrypt(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt payload: %w", err)
+	}
+
+	return jwe.CompactSerialize()
+}
 
 // EncodePublicKeyToPEM converts an RSA or ECDSA public key to PEM format.
 func EncodePublicKeyToPEM(pubKey crypto.PublicKey) ([]byte, error) {

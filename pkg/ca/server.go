@@ -256,7 +256,7 @@ func (s *Server) IssueCertificate(csrPEM []byte) (*model.Certificate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open Root CA database: %v", err)
 	}
-	issuedCertificate, err := s.signCSR(csrPEM)
+	issuedCertificate, err := s.verifyCSR(csrPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue new certificate: %v", err)
 
@@ -583,8 +583,8 @@ func generateSerialNumber() (int64, error) {
 	}
 }
 
-// signCSR signs a certificate signing request and returns a signed certificate in PEM format
-func (s *Server) signCSR(csrPEM []byte) (*model.Certificate, error) {
+// verifyCSR verifies a certificate signing request and returns a signed certificate in PEM format
+func (s *Server) verifyCSR(csrPEM []byte) (*model.Certificate, error) {
 	block, _ := pem.Decode(csrPEM)
 	if block == nil || block.Type != "CERTIFICATE REQUEST" {
 		return nil, fmt.Errorf("invalid CSR PEM")
@@ -615,7 +615,7 @@ func (s *Server) signCSR(csrPEM []byte) (*model.Certificate, error) {
 		Subject:      csr.Subject,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(1, 0, 0),
-		KeyUsage:     x509.KeyUsageKeyEncipherment, // keyEncipherement
+		KeyUsage:     x509.KeyUsageKeyEncipherment,
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, certTemplate, s.caRootCert, csr.PublicKey, s.caRootKey)

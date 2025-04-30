@@ -14,7 +14,6 @@ import (
 	"github.com/google/go-tpm/tpmutil"
 	"io"
 	"slices"
-	"sync"
 	"time"
 )
 
@@ -49,7 +48,6 @@ type TPM struct {
 
 	aikHandle tpmutil.Handle
 	ekHandle  tpmutil.Handle
-	mtx       sync.Mutex
 }
 
 func New(tpmPath string, keyType KeyType) *TPM {
@@ -124,9 +122,6 @@ func (tpm *TPM) getAIK() *client.Key {
 }
 
 func (tpm *TPM) GetEKCertificate() ([]byte, error) {
-	tpm.mtx.Lock()
-	defer tpm.mtx.Unlock()
-
 	EK := tpm.getEK()
 	tpm.ekHandle = EK.Handle()
 	defer EK.Close()
@@ -146,9 +141,6 @@ func (tpm *TPM) GetEKCertificate() ([]byte, error) {
 // GetEKandCertificate is used to get TPM EK public key and certificate.
 // It returns both the EK and the certificate to be compliant with simulator TPMs not provided with a certificate
 func (tpm *TPM) GetEKandCertificate() ([]byte, []byte, error) {
-	tpm.mtx.Lock()
-	defer tpm.mtx.Unlock()
-
 	EK := tpm.getEK()
 	tpm.ekHandle = EK.Handle()
 	defer EK.Close()
@@ -175,9 +167,6 @@ func (tpm *TPM) GetEKandCertificate() ([]byte, []byte, error) {
 
 // CreateAIK Function to create a new AIK (Attestation Identity Key) for the Agent
 func (tpm *TPM) CreateAIK() ([]byte, []byte, error) {
-	tpm.mtx.Lock()
-	defer tpm.mtx.Unlock()
-
 	AIK := tpm.getAIK()
 	tpm.aikHandle = AIK.Handle()
 	defer AIK.Close()
@@ -211,9 +200,6 @@ func containsAndReturnPCRs(pcrsToQuote []int) (bool, []int) {
 }
 
 func (tpm *TPM) QuoteGeneralPurposePCRs(nonce []byte, pcrSet []int) ([]byte, error) {
-	tpm.mtx.Lock()
-	defer tpm.mtx.Unlock()
-
 	pcrSetContainsBootReserved, foundPCR := containsAndReturnPCRs(pcrSet)
 	if pcrSetContainsBootReserved {
 		return nil, fmt.Errorf("cannot compute Quote on provided PCR set %v: boot reserved PCRs where included: %v", foundPCR, bootReservedPCRs)
@@ -239,9 +225,6 @@ func (tpm *TPM) QuoteGeneralPurposePCRs(nonce []byte, pcrSet []int) ([]byte, err
 }
 
 func (tpm *TPM) QuoteBootPCRs(nonce []byte) ([]byte, error) {
-	tpm.mtx.Lock()
-	defer tpm.mtx.Unlock()
-
 	bootPCRs := tpm2legacy.PCRSelection{
 		Hash: tpm2legacy.AlgSHA256,
 		PCRs: bootReservedPCRs,
@@ -262,9 +245,6 @@ func (tpm *TPM) QuoteBootPCRs(nonce []byte) ([]byte, error) {
 }
 
 func (tpm *TPM) ActivateAIKCredential(aikCredential, aikEncryptedSecret []byte) ([]byte, error) {
-	tpm.mtx.Lock()
-	defer tpm.mtx.Unlock()
-
 	session, _, err := tpm2legacy.StartAuthSession(
 		tpm.rwc,
 		tpm2legacy.HandleNull,
@@ -299,9 +279,6 @@ func (tpm *TPM) ActivateAIKCredential(aikCredential, aikEncryptedSecret []byte) 
 }
 
 func (tpm *TPM) SignEvidenceWithAIK(issuer string, evidence *Evidence) (string, error) {
-	tpm.mtx.Lock()
-	defer tpm.mtx.Unlock()
-
 	if tpm.aikHandle.HandleValue() == 0 {
 		return "", fmt.Errorf("AIK is not already created")
 	}
@@ -310,7 +287,7 @@ func (tpm *TPM) SignEvidenceWithAIK(issuer string, evidence *Evidence) (string, 
 	defer AIK.Close()
 
 	// Step 1: Marshal the CMW claims
-	cmwJSON, err := evidence.MarshalEvidenceJSON()
+	cmwJSON, err := evidence.ToJSON()
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal CMW: %w", err)
 	}
@@ -321,10 +298,12 @@ func (tpm *TPM) SignEvidenceWithAIK(issuer string, evidence *Evidence) (string, 
 		return "", fmt.Errorf("failed to unmarshal CMW JSON: %w", err)
 	}
 
+	currentTime := time.Now()
 	// Step 3: Create the JWT claims
 	claims := jwt.MapClaims{
-		"iss": issuer,
-		"exp": time.Now().Add(3 * time.Minute).Unix(),
+		"exp": currentTime.Add(3 * time.Minute).Unix(),
+		"iat": currentTime.Unix(),
+		"nbf": currentTime.Unix(),
 		"cmw": cmwMap,
 	}
 
@@ -359,9 +338,6 @@ func (tpm *TPM) SignEvidenceWithAIK(issuer string, evidence *Evidence) (string, 
 }
 
 func (tpm *TPM) SignWithAIK(message []byte) ([]byte, error) {
-	tpm.mtx.Lock()
-	defer tpm.mtx.Unlock()
-
 	if tpm.aikHandle.HandleValue() == 0 {
 		return nil, fmt.Errorf("AIK is not already created")
 	}

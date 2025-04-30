@@ -3,10 +3,10 @@ module github.com/franc-zar/k8s-node-attestation/pkg/agent
 go 1.23.4
 
 require (
-	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250428154013-46ec8199229a
-	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250428154013-46ec8199229a
-	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250428154013-46ec8199229a
-	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250428154013-46ec8199229a
+	github.com/franc-zar/k8s-node-attestation/pkg/attestation v0.0.0-20250428164247-3e2297726892
+	github.com/franc-zar/k8s-node-attestation/pkg/crypto v0.0.0-20250428164247-3e2297726892
+	github.com/franc-zar/k8s-node-attestation/pkg/logger v0.0.0-20250428164247-3e2297726892
+	github.com/franc-zar/k8s-node-attestation/pkg/model v0.0.0-20250428164247-3e2297726892
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/veraison/cmw v0.1.2-0.20250416174706-f0477216c7b0
@@ -29,7 +29,7 @@ require (
 	github.com/google/go-configfs-tsm v0.3.3-0.20240919001351-b4b5b84fdcbc // indirect
 	github.com/google/go-sev-guest v0.13.0 // indirect
 	github.com/google/go-tdx-guest v0.3.2-0.20241009005452-097ee70d0843 // indirect
-	github.com/google/go-tpm v0.9.3 // indirect
+	github.com/google/go-tpm v0.9.4 // indirect
 	github.com/google/go-tpm-tools v0.4.5 // indirect
 	github.com/google/logger v1.1.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

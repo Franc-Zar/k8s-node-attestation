@@ -15,7 +15,7 @@ func TestNewEvidence(t *testing.T) {
 
 func TestNewClaim(t *testing.T) {
 	// Test case where we provide valid data for creating a claim
-	mediaType := EatJWTMediaType
+	mediaType := EatJsonClaimMediaType
 	value := []byte("some value for the claim")
 	claim, err := NewClaim(mediaType, value)
 	assert.NoError(t, err, "Expected no error when creating new claim")
@@ -29,7 +29,7 @@ func TestAddClaim(t *testing.T) {
 	// Test adding a valid claim to evidence
 	evidence, err := NewEvidence(CmwCollectionTypeAttestationEvidence)
 	assert.NoError(t, err, "Expected no error when creating new evidence")
-	claim, err := NewClaim(EatJWTMediaType, []byte("test claim"), cmw.Evidence)
+	claim, err := NewClaim(EatJsonClaimMediaType, []byte("test claim"), cmw.Evidence)
 	assert.NoError(t, err, "Expected no error when creating new claim")
 
 	err = evidence.AddClaim("testClaimKey", claim)
@@ -41,10 +41,10 @@ func TestGetClaim(t *testing.T) {
 	evidence, err := NewEvidence(CmwCollectionTypeAttestationEvidence)
 	assert.NoError(t, err, "Expected no error when creating new evidence")
 
-	claim1, err := NewClaim(EatJWTMediaType, []byte("test claim1"))
+	claim1, err := NewClaim(EatJsonClaimMediaType, []byte("test claim1"))
 	assert.NoError(t, err, "Expected no error when creating new claim1")
 
-	claim2, err := NewClaim(EatJWTMediaType, []byte("test claim2"))
+	claim2, err := NewClaim(EatJsonClaimMediaType, []byte("test claim2"))
 	assert.NoError(t, err, "Expected no error when creating new claim2")
 
 	err = evidence.AddClaim("testClaimKey1", claim1)
@@ -64,7 +64,7 @@ func TestMarshalEvidenceJSON(t *testing.T) {
 	evidence, err := NewEvidence(CmwCollectionTypeAttestationEvidence)
 	assert.NoError(t, err, "Expected no error when creating new evidence")
 
-	claim, err := NewClaim(EatJWTMediaType, []byte("test claim"))
+	claim, err := NewClaim(EatJsonClaimMediaType, []byte("test claim"))
 	assert.NoError(t, err, "Expected no error when creating new claim")
 
 	err = evidence.AddClaim("testClaimKey", claim)
@@ -80,7 +80,7 @@ func TestFromJSON(t *testing.T) {
 	evidence, err := NewEvidence(CmwCollectionTypeAttestationEvidence)
 	assert.NoError(t, err, "Expected no error when creating new evidence")
 
-	claim, err := NewClaim(EatJWTMediaType, []byte("test claim"), cmw.Evidence)
+	claim, err := NewClaim(EatJsonClaimMediaType, []byte("test claim"), cmw.Evidence)
 	assert.NoError(t, err, "Expected no error when creating new claim")
 
 	err = evidence.AddClaim("testClaimKey", claim)

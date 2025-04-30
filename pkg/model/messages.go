@@ -82,7 +82,15 @@ type ChallengeSolutionCnf struct {
 type CredentialActivationResponse struct {
 	CNF ChallengeSolutionCnf `json:"cnf"` // CNF data containing worker's key information
 	CMW json.RawMessage      `json:"cmw"` // RATS CMW including the quote computed using the newly activated aik
+	CSR string               `json:"csr"` // base64 encoded pem certificate of the CSR for the TLS certificate needed by the Agent to establish mTLS with Verifier
 	Iat int64                `json:"iat"` // Issued at timestamp
 	Nbf int64                `json:"nbf"` // Not before timestamp
 	Exp int64                `json:"exp"` // Expiration timestamp
+}
+
+type AcknowledgeWorkerRegistration struct {
+	X5C []string `json:"x5c"` // EK certificate chain (usually just one cert)
+	Iat int64    `json:"iat"` // Issued at timestamp
+	Nbf int64    `json:"nbf"` // Not before timestamp
+	Exp int64    `json:"exp"` // Expiration timestamp
 }

@@ -73,9 +73,9 @@ func (i *Interactor) ConfigureKubernetesClient() {
 	}
 }
 
-func (i *Interactor) DeleteAgent(workerName string) error {
-	deploymentName := fmt.Sprintf("agent-%s-deployment", workerName)
-	serviceName := fmt.Sprintf("agent-%s-service", workerName)
+func (i *Interactor) DeleteAgent(workerUID string) error {
+	deploymentName := fmt.Sprintf("agent-%s-deployment", workerUID)
+	serviceName := fmt.Sprintf("agent-%s-service", workerUID)
 
 	// Delete the Service
 	err := i.ClientSet.CoreV1().Services(AttestationNamespace).Delete(context.TODO(), serviceName, metav1.DeleteOptions{})
@@ -111,9 +111,9 @@ func (i *Interactor) DeployAgent(newWorker *corev1.Node, agentConfig *model.Agen
 	privileged := true
 	charDeviceType := corev1.HostPathCharDev
 	pathFileType := corev1.HostPathFile
-	agentDeploymentName := fmt.Sprintf("agent-%s-deployment", newWorker.GetName())
-	agentContainerName := fmt.Sprintf("agent-%s", newWorker.GetName())
-	agentServiceName := fmt.Sprintf("agent-%s-service", newWorker.GetName())
+	agentDeploymentName := fmt.Sprintf("agent-%s-deployment", newWorker.GetUID())
+	agentContainerName := fmt.Sprintf("agent-%s", newWorker.GetUID())
+	agentServiceName := fmt.Sprintf("agent-%s-service", newWorker.GetUID())
 
 	agentHost, err := i.GetWorkerInternalIP(newWorker)
 	if err != nil {
@@ -149,6 +149,7 @@ func (i *Interactor) DeployAgent(newWorker *corev1.Node, agentConfig *model.Agen
 							Env: []corev1.EnvVar{
 								{Name: "AGENT_PORT", Value: strconv.Itoa(int(agentConfig.AgentPort))},
 								{Name: "TPM_PATH", Value: agentConfig.TPMPath},
+								{Name: "NODE_UID", Value: string(newWorker.GetUID())},
 							},
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: agentConfig.AgentPort},

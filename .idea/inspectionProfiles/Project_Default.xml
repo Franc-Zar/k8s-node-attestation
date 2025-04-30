@@ -4,6 +4,7 @@
     <inspection_tool class="GoDfaErrorMayBeNotNil" enabled="true" level="WARNING" enabled_by_default="true">
       <functions>
         <function importPath="crypto/rsa" name="GenerateKey" />
+        <function importPath="github.com/franc-zar/k8s-node-attestation/pkg/attestation" name="NewEvidence" />
       </functions>
     </inspection_tool>
   </profile>

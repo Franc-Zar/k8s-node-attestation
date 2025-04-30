@@ -3,6 +3,7 @@ package worker_handler
 import (
 	"github.com/franc-zar/k8s-node-attestation/pkg/cluster"
 	"github.com/franc-zar/k8s-node-attestation/pkg/logger"
+	"github.com/franc-zar/k8s-node-attestation/pkg/model"
 	"github.com/franc-zar/k8s-node-attestation/pkg/registrar"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
@@ -68,6 +69,12 @@ func (w *WorkerHandler) WatchNodes() {
 }
 
 func (w *WorkerHandler) registerNode(node *corev1.Node) {
+
+	newWorker := model.WorkerNode{
+		UUID: string(node.GetUID()),
+		Name: node.GetName(),
+		AIK:  ,
+	}
 	_, _, err := registrar.RegisterNodeCommand()
 }
 

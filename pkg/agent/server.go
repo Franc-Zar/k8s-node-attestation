@@ -28,19 +28,19 @@ type Server struct {
 	Host                  string
 	Port                  int
 	imaMeasurementLogPath string
-	rootCaCert            *x509.Certificate
 	tpm                   *attestation.TPM
 	router                *gin.Engine
 	tlsCertificate        *x509.Certificate
-	workerId              string
+	rootCaCert            *x509.Certificate
+	workerUID             string
 }
 
-func New(tpm *attestation.TPM, tlsCertificate *x509.Certificate, rootCaCert *x509.Certificate, workerId string) *Server {
+func New(tpm *attestation.TPM, tlsCertificate *x509.Certificate, rootCaCert *x509.Certificate, workerUID string) *Server {
 	newServer := &Server{}
 	newServer.tpm = tpm
 	newServer.tlsCertificate = tlsCertificate
 	newServer.rootCaCert = rootCaCert
-	newServer.workerId = workerId
+	newServer.workerUID = workerUID
 	return newServer
 }
 
@@ -69,7 +69,7 @@ func (s *Server) getWorkerRegistrationCredentials(c *gin.Context) {
 
 	c.JSON(http.StatusOK, model.CredentialResponse{
 		CNF: model.AIKCnf{
-			KID: s.workerId,
+			KID: s.workerUID,
 			X5C: []string{encodedEkCert},
 			AIK: model.AIKInfo{
 				Name:       encodedAikNameData,
@@ -80,6 +80,10 @@ func (s *Server) getWorkerRegistrationCredentials(c *gin.Context) {
 		Nbf: currentTime.Unix(),
 		Exp: currentTime.Add(3 * time.Minute).Unix(),
 	})
+}
+
+func (s *Server) acknowledgeWorkerRegistration(c *gin.Context) {
+
 }
 
 func (s *Server) challengeWorker(c *gin.Context) {
@@ -93,7 +97,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 		return
 	}
 
-	if s.workerId != aikActivationChallenge.CNF.KID {
+	if s.workerUID != aikActivationChallenge.CNF.KID {
 		c.JSON(http.StatusUnauthorized, model.SimpleResponse{
 			Message: "KID does not match AIK owning Worker identifier",
 			Status:  model.Error,
@@ -103,15 +107,15 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	aikCredential, err := base64.StdEncoding.DecodeString(aikActivationChallenge.CNF.Challenge.CredentialBlob)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, model.SimpleResponse{
-			Message: "failed to decode AIK credential from base64",
+			Message: "Agent failed to decode AIK credential from base64",
 			Status:  model.Error,
 		})
 	}
 
-	aikEncryptedSecret, err := base64.StdEncoding.DecodeString(aikActivationChallenge.CNF.Challenge.CredentialBlob)
+	aikEncryptedSecret, err := base64.StdEncoding.DecodeString(aikActivationChallenge.CNF.Challenge.Secret)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, model.SimpleResponse{
-			Message: "failed to decode AIK encrypted secret from base64",
+			Message: "Agent failed to decode AIK encrypted secret from base64",
 			Status:  model.Error,
 		})
 		return
@@ -129,7 +133,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	salt, err := base64.StdEncoding.DecodeString(aikActivationChallenge.CNF.Challenge.Salt)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, model.SimpleResponse{
-			Message: "Failed to decode challenge salt from base64",
+			Message: "Agent failed to decode challenge salt from base64",
 			Status:  model.Error,
 		})
 	}
@@ -137,7 +141,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	quoteNonce, err := cryptoUtils.ComputeHKDF(ephemeralKey, salt, cryptoUtils.NonceDerivationInfo, 8)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
-			Message: "Failed to compute quote nonce",
+			Message: "Agent failed to compute quote nonce",
 			Status:  model.Error,
 		})
 	}
@@ -154,7 +158,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	bootQuoteClaim, err := attestation.NewClaim(attestation.EatJsonClaimMediaType, bootQuoteJSON, cmw.Evidence)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
-			Message: "Failed to create claim from boot quote",
+			Message: "Agent failed to create claim from boot quote",
 			Status:  model.Error,
 		})
 	}
@@ -162,7 +166,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	credentialActivationEvidence, err := attestation.NewEvidence(attestation.CmwCollectionTypeCredentialActivationEvidence)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
-			Message: "Failed to create evidence for credential activation",
+			Message: "Agent failed to create evidence for credential activation",
 			Status:  model.Error,
 		})
 	}
@@ -170,7 +174,7 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	err = credentialActivationEvidence.AddClaim(attestation.BootQuoteClaimKey, bootQuoteClaim)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
-			Message: "Failed to add boot quote to credential activation evidence ",
+			Message: "Agent failed to add boot quote to credential activation evidence ",
 			Status:  model.Error,
 		})
 	}
@@ -178,20 +182,20 @@ func (s *Server) challengeWorker(c *gin.Context) {
 	evidenceJSON, err := credentialActivationEvidence.ToJSON()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
-			Message: "Failed to marshal evidence to JSON",
+			Message: "Agent failed to marshal evidence to JSON",
 			Status:  model.Error,
 		})
 	}
 
 	// Compute HMAC on the worker UUID using the ephemeral key
-	challengeHmac := cryptoUtils.ComputeHMAC([]byte(s.workerId), ephemeralKey)
+	challengeHmac := cryptoUtils.ComputeHMAC([]byte(s.workerUID), ephemeralKey)
 	encodedChallengeHmac := base64.StdEncoding.EncodeToString(challengeHmac)
 
 	currentTime := time.Now()
 	// Respond with success, including the HMAC of the UUID
 	c.JSON(http.StatusOK, model.CredentialActivationResponse{
 		CNF: model.ChallengeSolutionCnf{
-			KID:  s.workerId,
+			KID:  s.workerUID,
 			HMAC: encodedChallengeHmac,
 		},
 		CMW: evidenceJSON,
@@ -199,11 +203,6 @@ func (s *Server) challengeWorker(c *gin.Context) {
 		Nbf: currentTime.Unix(),
 		Exp: currentTime.Add(3 * time.Minute).Unix(),
 	})
-	return
-}
-
-func (s *Server) acknowledgeRegistration(c *gin.Context) {
-
 }
 
 func (s *Server) workerAttestation(c *gin.Context) {
@@ -216,14 +215,14 @@ func (s *Server) workerAttestation(c *gin.Context) {
 		return
 	}
 
-	if s.workerId != workerAttestationRequest.NodeUUID {
+	if s.workerUID != workerAttestationRequest.CNF.KID {
 		c.JSON(http.StatusUnauthorized, model.SimpleResponse{
-			Message: "Received UUID mismatch with target worker UUID",
+			Message: "Received UID mismatch with target worker UID",
 			Status:  model.Error,
 		})
 	}
 
-	quoteNonce, err := base64.StdEncoding.DecodeString(workerAttestationRequest.Nonce)
+	quoteNonce, err := base64.StdEncoding.DecodeString(workerAttestationRequest.CNF.Nonce)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, model.SimpleResponse{
 			Message: "Agent failed to decode quote nonce",
@@ -275,7 +274,7 @@ func (s *Server) workerAttestation(c *gin.Context) {
 		})
 	}
 
-	err = attestationEvidence.AddClaim(attestation.IMAPcrQuote, quoteClaim)
+	err = attestationEvidence.AddClaim(attestation.IMAPcrQuoteClaimKey, quoteClaim)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.SimpleResponse{
 			Message: "Agent failed to add quote claim to attestation evidence",
@@ -299,6 +298,16 @@ func (s *Server) workerAttestation(c *gin.Context) {
 		})
 	}
 
+	currentTime := time.Now()
+	c.JSON(http.StatusOK, model.WorkerAttestationResponse{
+		CNF: model.AttestationResponseCnf{
+			KID: s.workerUID,
+		},
+		CMW: evidenceJSON,
+		Iat: currentTime.Unix(),
+		Nbf: currentTime.Unix(),
+		Exp: currentTime.Add(3 * time.Minute).Unix(),
+	})
 }
 
 func (s *Server) getWorkerMeasurementLog() ([]byte, error) {
@@ -325,9 +334,8 @@ func (s *Server) Start() {
 
 	s.router.GET(GetWorkerRegistrationCredentialsUrl, s.getWorkerRegistrationCredentials) // GET worker identifying data (newly generated UUID, AIK, EK)
 	s.router.POST(WorkerRegistrationChallengeUrl, s.challengeWorker)                      // POST challenge worker for Registration
-	s.router.POST(AcknowledgeRegistrationUrl, s.acknowledgeRegistration)
-
-	s.router.POST(WorkerAttestationUrl, s.workerAttestation) // POST attestation against one Pod running upon Worker of this agent
+	s.router.POST(WorkerAttestationUrl, s.workerAttestation)                              // POST attestation against the Worker
+	s.router.POST(AcknowledgeRegistrationUrl, s.acknowledgeWorkerRegistration)
 
 	// Start the server
 	err := s.router.Run(":" + strconv.Itoa(s.Port))
